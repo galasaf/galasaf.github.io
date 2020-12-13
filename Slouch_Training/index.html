@@ -34,9 +34,9 @@
 
   <p>Thank you for helping me get training images for the 'Slouching' model.
   When finished, the model will be able to tell whether you're slouching based on your webcam.
-  This page is to get training images to train the model.</p>
+  This page is to get training images to train the model. This entire process should take about <b>two minutes</b>.</p>
   <form>
-    <p>To start, select a pose for the first set of training images, either "Slouch" or "Not Slouch". For our purposes, you can define your slouching/ not-slouching pose however you wish, but it should be a natural pose that you can sustain for a long time while working on the computer.</p>
+    <p>To start, select a pose for the first set of training images, either "Slouch" or "Not Slouch". For our purposes, you can define your slouching/ not-slouching pose however you wish, but it should be a natural pose that you can sustain for a long time while working on the computer. There is no need to do anything special with your webcam angle, positioning, lighting, etc. We want our training images to be as reflective of real-world conditions as possible, so the messier the better.</p>
     <label class="container">Slouch
       <input type="radio" id="slouch" name="slouching_status" value="Slouching"  onclick='radioChanged(this)'>
       <span class="checkmark"></span>
@@ -53,7 +53,7 @@
 -->
     <p>Then, use the toggle button below to Start and Stop recording (You may need to allow camera access for this to work).</p>
     <p>It is best if you can minimize this window and do other stuff on your computer for 30-60 seconds in a comfortable position while this is recording, so the recording reflects your natural pose when working on the computer. The camera will take a picture every second and store it in memory for you to download later. <b>The recording is in your browser and is not transfered or stored online</b>. If you want to start over, just refresh the browser.</p>
-    <p>When you're done, stop recording, switch to the next pose and repeat.
+    <p>When you're done, stop recording, switch to the next pose and repeat.</p>
     <p><b>Start recording:</b></p>
     <label class="switch" id="recording_button">
       <input type="checkbox" onclick='handleRecordButton(this);'>
