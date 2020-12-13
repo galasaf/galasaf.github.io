@@ -1,0 +1,180 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>WebcamJS Test Page</title>
+  <style type="text/css">
+    body { font-family: Helvetica, sans-serif; }
+    h2, h3 { margin-top:0; }
+    form { margin-top: 15px; }
+    form > input { margin-right: 15px; }
+    #results { float:right; margin:20px; padding:20px; border:1px solid; background:#ccc; }
+  </style>
+  <link rel="stylesheet" href="radio.css"> <!-- Formatting for the radio buttons -->
+  <link rel="stylesheet" href="switch.css"> <!-- Formatting for the "Recording" toggle switch -->
+  <link rel="stylesheet" href="submit.css"> <!-- Formatting for the "Download" button -->
+
+</head>
+<body>
+  <div id="results">Snapshots will appear here (you can delete these later)</div>
+  
+<!--  <h1>WebcamJS Test Page</h1>
+  <h3>Demonstrates simple 320x240 capture &amp; display</h3> -->
+  <h1>Record snapshots of Slouching and Not Slouching</h1>
+  
+  <div id="my_camera"></div>
+  
+  <!-- Include the Webcam.js JavaScript Library -->
+  <script type="text/javascript" src="../webcam.min.js"></script>
+  <!-- Include the JSZip.js and FileSaver.js JavaScript Libraries -->
+  <script type="text/javascript" src="../FileSaver.min.js"></script>
+  <script type="text/javascript" src="../jszip.min.js"></script>
+  
+  <!-- Configure a few settings and attach camera -->
+  <script language="JavaScript">
+    Webcam.set({
+      width: 320,
+      height: 240,
+      image_format: 'jpeg',
+      jpeg_quality: 90
+    });
+    Webcam.attach( '#my_camera' );
+  </script>
+
+
+
+
+
+
+  <form>
+    <p>To start, first select either "Slouch" or "Not Slouch".</p>
+    <label class="container">Slouch
+      <input type="radio" id="slouch" name="slouching_status" value="Slouching" onclick='radioChanged(this)'>
+      <span class="checkmark"></span>
+    </label>
+    <label class="container">Not Slouch
+      <input type="radio" id="upright" name="slouching_status" value="Not Slouching" onclick='radioChanged(this)'>
+      <span class="checkmark"></span>
+    </label>
+<!--
+    <input type="radio" id="slouch" name="slouching_status" value="Slouching" onclick='radioChanged(this)'>
+    <label for="slouch">Slouch</label><br>
+    <input type="radio" id="upright" name="slouching_status" value="Not Slouching" onclick='radioChanged(this)'>
+    <label for="upright">Not Slouch</label><br>
+-->
+    <p>Then, use the toggle button below to Start and Stop recording (You may need to allow camera access for this to work).</p>
+    <p>It is best if you can minimize this window and do other stuff on your computer for 30-60 seconds in a comfortable position while this is recording, so the recording reflects your natural pose when working on the computer. The camera will take a picture every second and store it in memory for you to download later. If you want to start over, just refresh the browser.</p>
+    <p>When you're done, stop recording, switch to the next pose and repeat.
+    <p><b>Start recording:</b></p>
+    <label class="switch" id="recording_button">
+      <input type="checkbox" onclick='handleRecordButton(this);'>
+      <span class="slider round"></span>
+    </label>
+  </form>
+
+  <div id="recording_status"><p>Not Recording.</div>
+
+  <script language="JavaScript">
+    var recording = false;
+    var recording_interval;
+    var slouching_status;
+    var num_slouch = 0;
+    var num_upright = 0;
+
+    const SNAPSHOT_FIRST_IMG_TIMING = 500 // Time before taking first snapshot
+    const SNAPSHOT_TIMING = 1000 // Time between snapshots
+
+    // These objects are for saving images in a JSZip folder
+    var imgData = null;
+    var zip = new JSZip();
+//    var img = zip.folder("images");
+
+
+    function handleRecordButton(cb) {
+      // Get the status that recording for (Slouching or Not Slouching)
+      var radios = document.getElementsByName('slouching_status');
+      for (var i = 0, length = radios.length; i < length; i++) {
+        if (radios[i].checked) {
+          slouching_status = radios[i].value;
+          break;
+        }
+      }
+      // Output that Recording has started for the relevant Slouching status, and start taking snapshots
+      var recording_status = document.getElementById('recording_status');
+      if (cb.checked) {
+        recording = true;
+        recording_interval = setInterval(take_snapshot, SNAPSHOT_FIRST_IMG_TIMING); // The first image after clicking "Record" starts quickly
+        recording_status.innerHTML = "<p style='color:red;'>Recording video for " + slouching_status + ".</p>";
+      } else {
+        recording = false;
+        clearInterval(recording_interval);
+        recording_status.innerHTML = "<p>Not Recording.</p>";
+      }
+      console.log("Clicked, new value = " + cb.checked);
+    }
+
+    function radioChanged(rb) {
+      // If the radio button is switched, then behave as though the "Recording" button was de-activated and re-activated
+      // (ie update the label and behavior of the Recording button based on whether the person selected "Slouch" or "Not Slouch")
+      var recording_button = document.getElementById("recording_button");
+      recording_button.click()
+      recording_button.click();
+    }
+
+
+
+
+    // Code to handle taking the snapshot and displaying it locally
+    function take_snapshot() {
+        // Change the timing after taking the first image
+        clearInterval(recording_interval);
+        recording_interval = setInterval(take_snapshot, SNAPSHOT_TIMING);
+        // take snapshot and get image data
+        Webcam.snap( function(data_uri) {
+          // display results in page
+          if (slouching_status == "Slouching") {
+            num_slouch += 1;
+          } else if (slouching_status == "Not Slouching") {
+            num_upright += 1;
+          }
+          document.getElementById('results').innerHTML = 
+            '<p>Number Slouching images: ' + num_slouch + '<br />' +
+            'Number Not Slouching images: ' + num_upright + '</p>' +
+            '<h2>Here is your image:</h2>' + 
+            '<img src="'+data_uri+'"/>';
+          
+          // Save the URI to the zip folder. (See: https://github.com/Stuk/jszip/issues/404)
+          var idx = data_uri.indexOf('base64,') + 'base64,'.length;
+          var content = data_uri.substring(idx);
+          // Save as "slouch-x.jgeg" or "upright-y.jpeg" where x and y are the indices of the latest images in the respective category
+          zip.file( ( slouching_status == "Slouching" ? 'slouch-' + num_slouch : 'upright-' + num_upright ) + ".jpeg", content, {base64: true} );
+
+        } );
+    }
+
+    // Script for downloading saved images. Uses JSZip and FileSaver
+    function download_imgs(){ 
+//      zip.file("Images.txt", "Number Slouching images: " + num_slouch + "\nNumber Not Slouching images: " + num_upright + "\n");
+      zip.generateAsync({type:"blob"})
+      .then(function(content) {
+          // see FileSaver.js
+          saveAs(content, "Training images.zip");
+      });
+    }
+
+
+  </script>  
+
+
+  <p>When you're all done, click "Download" below to download snapshots of the video (feel free to delete any images you don't like).</p>
+  <button type="button" class="button" onclick="download_imgs()">Download</button>
+<!--
+  <input type="button" value="Download" onclick="download_imgs()" >
+-->
+  <p>Download the zip file and email it to Asaf at <a href="mailto:asaf.gal@columbia.edu">asaf.gal@columbia.edu</a>.</p>
+  <p>Thank you for helping me get training images!!</p>
+
+
+</body>
+</html>

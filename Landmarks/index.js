@@ -1,9 +1,9 @@
 CLASSES = {
-  0: 'Apple Store',
-  1: 'Dakota',
-  2: 'Natural History Museum',
-  3: 'Rockefeller Center',
-  4: 'St Patricks Cathedral',
+  0: 'daisy',
+  1: 'dandelion',
+  2: 'roses',
+  3: 'sunflowers',
+  4: 'tulips',
 };
 
 const MODEL_PATH =
@@ -14,6 +14,7 @@ const TOPK_PREDICTIONS = 5;
 
 let my_model;
 const demo = async () => {
+
   status('Loading model...');
 
   my_model = await tf.loadLayersModel(MODEL_PATH);
@@ -45,6 +46,7 @@ const demo = async () => {
  * probabilities of the top K classes.
  */
 async function predict(imgElement) {
+
   status('Predicting...');
 
   // The first start time includes the time it takes to extract the image
