@@ -31,26 +31,12 @@
   <script type="text/javascript" src="FileSaver.min.js"></script>
   <script type="text/javascript" src="jszip.min.js"></script>
   
-  <!-- Configure a few settings and attach camera -->
-  <script language="JavaScript">
-    Webcam.set({
-      width: 320,
-      height: 240,
-      image_format: 'jpeg',
-      jpeg_quality: 90
-    });
-    Webcam.attach( '#my_camera' );
-  </script>
-
-
-
-
 
 
   <form>
     <p>To start, first select either "Slouch" or "Not Slouch".</p>
     <label class="container">Slouch
-      <input type="radio" id="slouch" name="slouching_status" value="Slouching" onclick='radioChanged(this)'>
+      <input type="radio" id="slouch" name="slouching_status" value="Slouching"  onclick='radioChanged(this)'>
       <span class="checkmark"></span>
     </label>
     <label class="container">Not Slouch
@@ -64,7 +50,7 @@
     <label for="upright">Not Slouch</label><br>
 -->
     <p>Then, use the toggle button below to Start and Stop recording (You may need to allow camera access for this to work).</p>
-    <p>It is best if you can minimize this window and do other stuff on your computer for 30-60 seconds in a comfortable position while this is recording, so the recording reflects your natural pose when working on the computer. The camera will take a picture every second and store it in memory for you to download later. If you want to start over, just refresh the browser.</p>
+    <p>It is best if you can minimize this window and do other stuff on your computer for 30-60 seconds in a comfortable position while this is recording, so the recording reflects your natural pose when working on the computer. The camera will take a picture every second and store it in memory for you to download later. <b>The recording is in your browser and is not transfered or stored online</b>. If you want to start over, just refresh the browser.</p>
     <p>When you're done, stop recording, switch to the next pose and repeat.
     <p><b>Start recording:</b></p>
     <label class="switch" id="recording_button">
@@ -82,7 +68,6 @@
     var num_slouch = 0;
     var num_upright = 0;
 
-    const SNAPSHOT_FIRST_IMG_TIMING = 500 // Time before taking first snapshot
     const SNAPSHOT_TIMING = 1000 // Time between snapshots
 
     // These objects are for saving images in a JSZip folder
@@ -90,6 +75,15 @@
     var zip = new JSZip();
 //    var img = zip.folder("images");
 
+
+    // Check if have camera access
+    function checkIsApproved(){
+      return navigator.mediaDevices.enumerateDevices()
+        .then(infos =>
+          // if any of the MediaDeviceInfo has a label, we're good to go
+          [...infos].some(info=>info.label!=="")
+        );
+    }
 
     function handleRecordButton(cb) {
       // Get the status that recording for (Slouching or Not Slouching)
@@ -100,26 +94,70 @@
           break;
         }
       }
-      // Output that Recording has started for the relevant Slouching status, and start taking snapshots
-      var recording_status = document.getElementById('recording_status');
-      if (cb.checked) {
+
+      // Do when recording is started
+      function startRecording() {
         recording = true;
-        recording_interval = setInterval(take_snapshot, SNAPSHOT_FIRST_IMG_TIMING); // The first image after clicking "Record" starts quickly
+        recording_interval = setInterval(take_snapshot, SNAPSHOT_TIMING); // The first image after clicking "Record" starts quickly
         recording_status.innerHTML = "<p style='color:red;'>Recording video for " + slouching_status + ".</p>";
-      } else {
+      }
+
+      // Do when recording failed (this code not seem to work)
+      function failedRecording() {
+        recording = false;
+        recording_status.innerHTML = "<p style='color:red;'>Recording failed; check camera permissions.</p>";
+      }
+
+      // Do when recording is stopped
+      function stopRecording() {
         recording = false;
         clearInterval(recording_interval);
         recording_status.innerHTML = "<p>Not Recording.</p>";
+      }
+
+      // Output that Recording has started for the relevant Slouching status, and start taking snapshots
+//      var recording_status = document.getElementById('recording_status');
+      if (cb.checked) {
+        // Configure a few settings and attach camera
+        Webcam.set({
+          width: 320,
+          height: 240,
+          image_format: 'jpeg',
+          jpeg_quality: 90
+        });
+        Webcam.attach( '#my_camera' );
+
+        // When access to camera given, start recording
+//        var video = document.querySelector('#my_camera');
+        var successCallback = function(error) {
+          // user allowed access to camera
+          console.log("test3 - allowed");
+          startRecording();
+        };
+        var errorCallback = function(error) {
+          if (error.name == 'NotAllowedError') {
+            // user denied access to camera
+            console.log("test3 - not allowed");
+          }
+        };
+        navigator.mediaDevices.getUserMedia({video:true})
+          .then(successCallback, errorCallback);
+
+      } else {
+        Webcam.reset();
+        stopRecording();
       }
 //      console.log("Clicked, new value = " + cb.checked);
     }
 
     function radioChanged(rb) {
-      // If the radio button is switched, then behave as though the "Recording" button was de-activated and re-activated
+      // If the radio button is switched while recording, then behave as though the "Recording" button was de-activated and re-activated
       // (ie update the label and behavior of the Recording button based on whether the person selected "Slouch" or "Not Slouch")
-      var recording_button = document.getElementById("recording_button");
-      recording_button.click()
-      recording_button.click();
+      if (recording) {
+        var recording_button = document.getElementById("recording_button");
+        recording_button.click()
+        recording_button.click();
+      }
     }
 
 
@@ -127,30 +165,32 @@
 
     // Code to handle taking the snapshot and displaying it locally
     function take_snapshot() {
-        // Change the timing after taking the first image
-        clearInterval(recording_interval);
-        recording_interval = setInterval(take_snapshot, SNAPSHOT_TIMING);
+//        // Change the timing after taking the first image
+//        clearInterval(recording_interval);
+//        recording_interval = setInterval(take_snapshot, SNAPSHOT_TIMING);
         // take snapshot and get image data
-        Webcam.snap( function(data_uri) {
-          // display results in page
-          if (slouching_status == "Slouching") {
-            num_slouch += 1;
-          } else if (slouching_status == "Not Slouching") {
-            num_upright += 1;
-          }
-          document.getElementById('results').innerHTML = 
-            '<p>Number Slouching images: ' + num_slouch + '<br />' +
-            'Number Not Slouching images: ' + num_upright + '</p>' +
-            '<h2>Here is your image:</h2>' + 
-            '<img src="'+data_uri+'"/>';
-          
-          // Save the URI to the zip folder. (See: https://github.com/Stuk/jszip/issues/404)
-          var idx = data_uri.indexOf('base64,') + 'base64,'.length;
-          var content = data_uri.substring(idx);
-          // Save as "slouch-x.jgeg" or "upright-y.jpeg" where x and y are the indices of the latest images in the respective category
-          zip.file( ( slouching_status == "Slouching" ? 'slouch-' + num_slouch : 'upright-' + num_upright ) + ".jpeg", content, {base64: true} );
+        if (slouching_status == "Slouching" || slouching_status == "Not Slouching") {
+          Webcam.snap( function(data_uri) {
+            // display results in page
+            if (slouching_status == "Slouching") {
+              num_slouch += 1;
+            } else if (slouching_status == "Not Slouching") {
+              num_upright += 1;
+            }
+            document.getElementById('results').innerHTML = 
+              '<p>Number Slouching images: ' + num_slouch + '<br />' +
+              'Number Not Slouching images: ' + num_upright + '</p>' +
+              '<h2>Here is your image:</h2>' + 
+              '<img src="'+data_uri+'"/>';
+            
+            // Save the URI to the zip folder. (See: https://github.com/Stuk/jszip/issues/404)
+            var idx = data_uri.indexOf('base64,') + 'base64,'.length;
+            var content = data_uri.substring(idx);
+            // Save as "slouch-x.jgeg" or "upright-y.jpeg" where x and y are the indices of the latest images in the respective category
+            zip.file( ( slouching_status == "Slouching" ? 'slouch-' + num_slouch : 'upright-' + num_upright ) + ".jpeg", content, {base64: true} );
 
-        } );
+          } );
+        }
     }
 
     // Script for downloading saved images. Uses JSZip and FileSaver
