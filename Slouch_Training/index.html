@@ -19,7 +19,6 @@
 <body>
   <div id="results">Snapshots will appear here (you can delete these later)</div>
   
-<!--  <h1>WebcamJS Test Page</h1>
   <h3>Demonstrates simple 320x240 capture &amp; display</h3> -->
   <h1>Record snapshots of Slouching and Not Slouching</h1>
   
@@ -43,12 +42,6 @@
       <input type="radio" id="upright" name="slouching_status" value="Not Slouching" onclick='radioChanged(this)'>
       <span class="checkmark"></span>
     </label>
-<!--
-    <input type="radio" id="slouch" name="slouching_status" value="Slouching" onclick='radioChanged(this)'>
-    <label for="slouch">Slouch</label><br>
-    <input type="radio" id="upright" name="slouching_status" value="Not Slouching" onclick='radioChanged(this)'>
-    <label for="upright">Not Slouch</label><br>
--->
     <p>Then, use the toggle button below to Start and Stop recording (You may need to allow camera access for this to work).</p>
     <p>It is best if you can minimize this window and do other stuff on your computer for 15-45 seconds in a comfortable position while this is recording, so the recording reflects your natural pose when working on the computer. The camera will take a picture every second and store it in memory for you to download later. <b>The recording is in your browser and is not transferred or stored online</b>. If you want to start over, just refresh the browser.</p>
     <p>When you're done, stop recording, switch to the next pose and repeat.</p>
@@ -73,8 +66,6 @@
     // These objects are for saving images in a JSZip folder
     var imgData = null;
     var zip = new JSZip();
-//    var img = zip.folder("images");
-
 
     // Check if have camera access
     function checkIsApproved(){
@@ -97,6 +88,14 @@
 
       // Do when recording is started
       function startRecording() {
+        // Configure a few settings and attach camera
+        Webcam.set({
+          width: 320,
+          height: 240,
+          image_format: 'jpeg',
+          jpeg_quality: 90
+        });
+        Webcam.attach( '#my_camera' );
         recording = true;
         recording_interval = setInterval(take_snapshot, SNAPSHOT_TIMING); // The first image after clicking "Record" starts quickly
         recording_status.innerHTML = "<p style='color:red;'>Recording video for " + slouching_status + ".</p>";
@@ -110,44 +109,30 @@
 
       // Do when recording is stopped
       function stopRecording() {
+        Webcam.reset();
         recording = false;
         clearInterval(recording_interval);
         recording_status.innerHTML = "<p>Not Recording.</p>";
       }
 
       // Output that Recording has started for the relevant Slouching status, and start taking snapshots
-//      var recording_status = document.getElementById('recording_status');
       if (cb.checked) {
-        // Configure a few settings and attach camera
-        Webcam.set({
-          width: 320,
-          height: 240,
-          image_format: 'jpeg',
-          jpeg_quality: 90
-        });
-        Webcam.attach( '#my_camera' );
-
         // When access to camera given, start recording
-//        var video = document.querySelector('#my_camera');
         var successCallback = function(error) {
           // user allowed access to camera
-          console.log("test3 - allowed");
           startRecording();
         };
         var errorCallback = function(error) {
           if (error.name == 'NotAllowedError') {
             // user denied access to camera
-            console.log("test3 - not allowed");
           }
         };
         navigator.mediaDevices.getUserMedia({video:true})
           .then(successCallback, errorCallback);
 
       } else {
-        Webcam.reset();
         stopRecording();
       }
-//      console.log("Clicked, new value = " + cb.checked);
     }
 
     function radioChanged(rb) {
@@ -165,9 +150,6 @@
 
     // Code to handle taking the snapshot and displaying it locally
     function take_snapshot() {
-//        // Change the timing after taking the first image
-//        clearInterval(recording_interval);
-//        recording_interval = setInterval(take_snapshot, SNAPSHOT_TIMING);
         // take snapshot and get image data
         if (slouching_status == "Slouching" || slouching_status == "Not Slouching") {
           Webcam.snap( function(data_uri) {
@@ -195,7 +177,6 @@
 
     // Script for downloading saved images. Uses JSZip and FileSaver
     function download_imgs(){ 
-//      zip.file("Images.txt", "Number Slouching images: " + num_slouch + "\nNumber Not Slouching images: " + num_upright + "\n");
       zip.generateAsync({type:"blob"})
       .then(function(content) {
           // see FileSaver.js
@@ -209,9 +190,6 @@
 
   <p>When you're all done, click "Download" below to download snapshots of the video (feel free to delete any images you don't like).</p>
   <button type="button" class="button" onclick="download_imgs()">Download</button>
-<!--
-  <input type="button" value="Download" onclick="download_imgs()" >
--->
   <p>Download the zip file and email it to Asaf at <a href="mailto:asaf.gal@columbia.edu">asaf.gal@columbia.edu</a>.</p>
   <p>Thank you for helping me get training images!!</p>
   <br />
