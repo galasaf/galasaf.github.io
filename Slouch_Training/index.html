@@ -32,12 +32,9 @@
   <script type="text/javascript" src="jszip.min.js"></script>
   
 
-  <p>Thank you for contributing training images for the 'Slouching' model.
-  When finished, the model will be able to tell whether you're slouching based on your webcam.
-  This page is to get training images to train the model. This entire process should take about <b>two minutes</b>.</p>
+  <p>Thank you for contributing training images for the 'Slouching' model. This entire process should take about <b>two minutes</b>.</p>
   <form>
-    <p>To start, select a pose for the first set of training images, either "Slouch" or "Not Slouch". For our purposes, you can define your slouching/ not-slouching pose however you wish, but it should be a natural pose that you can sustain for a long time while working on the computer. There is no need to do anything special with your webcam angle, positioning, lighting, etc. We want our training images to be as reflective of real-world conditions as possible, so the messier the better.</p>
-    <p>Select a pose for the first set of training images:</p>
+    <p>To start, select a pose for the first set of training images, either "Slouch" or "Not Slouch".</p>
     <label class="container">Slouch
       <input type="radio" id="slouch" name="slouching_status" value="Slouching"  onclick='radioChanged(this)'>
       <span class="checkmark"></span>
@@ -53,7 +50,7 @@
     <label for="upright">Not Slouch</label><br>
 -->
     <p>Then, use the toggle button below to Start and Stop recording (You may need to allow camera access for this to work).</p>
-    <p>It is best if you can minimize this window and do other stuff on your computer for 15-45 seconds in a comfortable position while this is recording, so the recording reflects your natural pose when working on the computer. The camera will take a picture every second and store it in memory for you to download later. <b>The recording is in your browser and is not transfered or stored online</b>. If you want to start over, just refresh the browser.</p>
+    <p>It is best if you can minimize this window and do other stuff on your computer for 15-45 seconds in a comfortable position while this is recording, so the recording reflects your natural pose when working on the computer. The camera will take a picture every second and store it in memory for you to download later. <b>The recording is in your browser and is not transferred or stored online</b>. If you want to start over, just refresh the browser.</p>
     <p>When you're done, stop recording, switch to the next pose and repeat.</p>
     <p><b>Start recording:</b></p>
     <label class="switch" id="recording_button">
@@ -217,7 +214,20 @@
 -->
   <p>Download the zip file and email it to Asaf at <a href="mailto:asaf.gal@columbia.edu">asaf.gal@columbia.edu</a>.</p>
   <p>Thank you for helping me get training images!!</p>
-
+  <br />
+  <hr>
+  <br />
+  <h3>FAQ</h3>
+  <p><b>What is this page/project?</b></p>
+  <p>This page is to get training images to train a model which will be able to tell whether a person is slouching using their webcam. The finished model will be posted online.</p>
+  <p><b>How do you define 'Slouching'?</b></p>
+  <p>You can define it however you wish for our purposes. However, to make the training images realistic, your slouching/ not-slouching pose should be a natural pose that you can sustain for a long time while working on the computer.</p>
+  <p><b>How should I position myself relative to the webcam?</b></p>
+  <p>There is no need to do anything special with your webcam angle, positioning, lighting, etc. We want our training images to be as reflective of real-world conditions as possible, so the messier the better.</p>
+  <p><b>How is my recording used? Will it be shared with anyone other than you?</b></p>
+  <p>The recorded images will be used only to train this model and will not be shared with anyone. Additionally, the recording is done in your browser, and is not transferred or stored online. You can delete any images you do not wish to share before emailing me your training images. If you have any questions or concerns at any time, please send me an email and I will do my best to help.<p>
+  <p><b>Who can I contact if I have any questions?</b></p>
+  <p>Please email Asaf at <a href="mailto:asaf.gal@columbia.edu">asaf.gal@columbia.edu</a> if you have any questions.</p>
 
 </body>
 </html>
