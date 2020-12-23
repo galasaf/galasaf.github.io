@@ -1,0 +1,2 @@
+1. Need to change "path" to the subpath in order to recognize the shards
+2. Need to change "Functional" to "Model" (see: https://github.com/tensorflow/tfjs/issues/3786)
