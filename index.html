@@ -1,0 +1,61 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Deep Learning Model for Slouching</title>
+  <style type="text/css">
+    body { font-family: Helvetica, sans-serif; }
+    h2, h3 { margin-top:0; }
+    form { margin-top: 15px; }
+    form > input { margin-right: 15px; }
+    #my_camera { float:right; margin:20px; }
+    #status { font-size: 14px; font-color: #fff; padding: 10px; }
+  </style>
+  <link rel="stylesheet" href="radio.css"> <!-- Formatting for the radio buttons -->
+  <link rel="stylesheet" href="switch.css"> <!-- Formatting for the "Recording" toggle switch -->
+  <link rel="stylesheet" href="submit.css"> <!-- Formatting for the "Download" button -->
+  <link rel="stylesheet" href="pred.css"> <!-- Formatting for the "Download" button -->
+
+</head>
+<body>
+
+  <h1>Record snapshots to predict Slouching or Not Slouching</h1>
+  
+  <div id="my_camera"></div>
+  
+  <!-- Include the Webcam.js JavaScript Library -->
+  <script type="text/javascript" src="webcam.min.js"></script>
+
+
+  <div class="tfjs-example-container">
+
+    <section>
+      <p class='section-head'>
+        Click 'Record' to predict whether slouching or not slouching.
+      <form>
+        <label class="switch" id="recording_button">
+          <input type="checkbox" onclick='handleRecordButton(this);'>
+          <span class="slider round"></span>
+        </label>
+      </form>
+
+      <div id="recording_status"><p>Not Recording.</div>
+      <section>
+        <div id="status"></div>
+      </section>
+
+      <div id="predictions"></div>
+
+    </section>
+
+    <!-- Include the TFJS library and JS file for making predictions -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.0.0/dist/tf.min.js"></script>
+    <script src="index.js"></script>
+    <!-- JS file to control recordings -->
+    <script src="recording.js"></script>
+
+  </div>
+
+</body>
+</html>
