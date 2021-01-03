@@ -1,9 +1,9 @@
 CLASSES = {
-  0: 'Apple Store',
-  1: 'Dakota',
-  2: 'Natural History Museum',
-  3: 'Rockefeller Center',
-  4: 'St Patricks Cathedral',
+  0: 'daisy',
+  1: 'dandelion',
+  2: 'roses',
+  3: 'sunflowers',
+  4: 'tulips',
 };
 
 const MODEL_PATH =
