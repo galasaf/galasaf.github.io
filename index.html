@@ -1,63 +1,52 @@
-<!doctype html>
-
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>Deep Learning Model for Slouching</title>
-  <style type="text/css">
-    body { font-family: Helvetica, sans-serif; }
-    h2, h3 { margin-top:0; }
-    form { margin-top: 15px; }
-    form > input { margin-right: 15px; }
-    #my_camera { float:right; margin:20px; }
-    #status { font-size: 14px; font-color: #fff; padding: 10px; }
-    #slouching_status {font-size: 18px; font-weight: bold; padding: 10px; }
-  </style>
-  <link rel="stylesheet" href="radio.css"> <!-- Formatting for the radio buttons -->
-  <link rel="stylesheet" href="switch.css"> <!-- Formatting for the "Recording" toggle switch -->
-  <link rel="stylesheet" href="submit.css"> <!-- Formatting for the "Download" button -->
-  <link rel="stylesheet" href="pred.css"> <!-- Formatting for the "Download" button -->
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>galasaf — projects</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --border:#262b36; --text:#e7eaf0; --muted:#8b93a3;
+    --accent:#4c6ef5; --accent-soft:#1c2340;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:"Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--text);
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+    padding:60px 20px;
+  }
+  header{max-width:640px; text-align:center; margin-bottom:40px;}
+  h1{font-size:26px; margin-bottom:8px;}
+  header p{color:var(--muted); font-size:14px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:16px; width:100%; max-width:640px;}
+  a.card{
+    display:block; background:var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding:20px; text-decoration:none; color:var(--text); transition:border-color .15s, transform .15s;
+  }
+  a.card:hover{border-color:var(--accent); transform:translateY(-2px);}
+  a.card h2{font-size:17px; margin-bottom:6px; color:var(--accent);}
+  a.card p{color:var(--muted); font-size:13px; line-height:1.5;}
+  footer{margin-top:50px; color:var(--muted); font-size:12px;}
+  footer a{color:var(--muted);}
+</style>
 </head>
 <body>
-
-  <h1>Record snapshots to predict Slouching or Not Slouching</h1>
-  
-  <div id="my_camera"></div>
-  
-  <!-- Include the Webcam.js JavaScript Library -->
-  <script type="text/javascript" src="webcam.min.js"></script>
-
-
-  <div class="tfjs-example-container">
-
-    <section>
-      <p class='section-head'>
-        Click 'Record' to predict whether slouching or not slouching.
-      <form>
-        <label class="switch" id="recording_button">
-          <input type="checkbox" onclick='handleRecordButton(this);'>
-          <span class="slider round"></span>
-        </label>
-      </form>
-
-      <div id="recording_status"><p>Not Recording.</p></div>
-      <div id="slouching_status"></div>
-      <section>
-        <div id="status"></div>
-      </section>
-
-      <div id="predictions"></div>
-
-    </section>
-
-    <!-- Include the TFJS library and JS file for making predictions -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.0.0/dist/tf.min.js"></script>
-    <script src="pred.js"></script>
-    <!-- JS file to control recordings -->
-    <script src="recording.js"></script>
-
-  </div>
-
+<header>
+  <h1>galasaf</h1>
+  <p>A collection of small projects and tools.</p>
+</header>
+<div class="grid">
+  <a class="card" href="roomfitter/">
+    <h2>Room Fitter</h2>
+    <p>Plan a room's layout and check what furniture actually fits — draw the floor plan, place objects, auto-arrange by priority.</p>
+  </a>
+  <a class="card" href="slouch-detector/">
+    <h2>Slouch Detector</h2>
+    <p>A webcam-based deep learning model that predicts slouching vs. good posture in real time.</p>
+  </a>
+</div>
+<footer>
+  <a href="https://github.com/galasaf">github.com/galasaf</a>
+</footer>
 </body>
 </html>
