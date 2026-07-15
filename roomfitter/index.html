@@ -1,0 +1,3562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room Fitter</title>
+<style>
+  :root{
+    --bg:#edf0f5; --panel:#ffffff; --panel2:#f6f8fb; --border:#dbe0e8; --border2:#c6cedb;
+    --text:#1d2433; --muted:#7e8798;
+    --accent:#4c6ef5; --accent-2:#3b5bdb; --accent-soft:#e8edff;
+    --green:#2f9e63; --red:#d6493c;
+    --shadow:0 1px 2px rgba(20,28,48,.05), 0 3px 10px rgba(20,28,48,.06);
+    --shadow-pop:0 4px 18px rgba(20,28,48,.16);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:"Segoe UI", system-ui, sans-serif; font-size:13px; color:var(--text);
+    background:var(--bg); display:flex; flex-direction:column; overflow:hidden;
+  }
+  #toolbar{
+    display:flex; align-items:center; gap:7px; padding:7px 12px;
+    background:var(--panel); border-bottom:1px solid var(--border); flex-wrap:nowrap;
+    box-shadow:0 1px 4px rgba(20,28,48,.06); position:relative; z-index:5;
+  }
+  #toolbar .sep{width:1px; align-self:stretch; background:var(--border); margin:0 3px;}
+  button{
+    font:inherit; padding:5px 11px; border:1px solid var(--border); border-radius:7px;
+    background:#fff; color:var(--text); cursor:pointer; white-space:nowrap;
+    transition:background .12s, border-color .12s, color .12s, box-shadow .12s;
+  }
+  button:hover{background:var(--panel2); border-color:var(--border2);}
+  button.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+  button.primary{
+    background:linear-gradient(180deg, #5b7aff, var(--accent)); border-color:var(--accent-2);
+    color:#fff; font-weight:600; box-shadow:0 1px 3px rgba(76,110,245,.35);
+  }
+  button.primary:hover{background:var(--accent-2); border-color:var(--accent-2);}
+  button.small{padding:3px 9px; font-size:12px; border-radius:6px; color:#4a5264;}
+  button.danger:hover{background:#fdeeec; border-color:var(--red); color:var(--red);}
+  button:disabled{opacity:.45; cursor:default; box-shadow:none;}
+  /* segmented toggles */
+  .seg{
+    display:inline-flex; align-items:center; background:var(--panel2);
+    border:1px solid var(--border); border-radius:8px; padding:2px; gap:2px;
+  }
+  .seg button{border:none; background:transparent; padding:3px 10px; border-radius:6px; color:var(--muted); box-shadow:none;}
+  .seg button:hover{background:#e9edf4; color:var(--text);}
+  .seg button.on{background:#fff; color:var(--text); font-weight:600; box-shadow:0 1px 2px rgba(20,28,48,.15);}
+  .seg button.active{background:var(--accent); color:#fff; font-weight:600;}
+  /* the Flat/3D view switch — the toggle you'll reach for most */
+  #viewSeg{border-color:#b9c6ff; background:var(--accent-soft); padding:3px; box-shadow:0 1px 3px rgba(76,110,245,.18);}
+  #viewSeg button{padding:4px 14px; font-weight:600; color:#5b6ea8;}
+  #viewSeg button:hover{background:#dde5ff; color:var(--accent-2);}
+  #viewSeg button.on{background:var(--accent); color:#fff; box-shadow:0 1px 3px rgba(76,110,245,.45);}
+  input[type=text], input[type=number], select{
+    font:inherit; padding:4px 7px; border:1px solid var(--border); border-radius:6px; background:#fff;
+    color:var(--text); transition:border-color .12s, box-shadow .12s;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus{
+    outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft);
+  }
+  input[type=number]{width:64px;}
+  input.mini{width:54px; padding:3px 4px; font-size:12px;}
+  label.inline{display:inline-flex; align-items:center; gap:4px; color:var(--muted);}
+  #main{flex:1; display:flex; flex-direction:column; min-height:0;}
+  #dockMid{flex:1; display:flex; min-height:0; min-width:0;}
+  .dockzone{background:#f2f4f9; overflow:auto; padding:0; flex-shrink:0; display:flex; gap:1px;}
+  .dockzone:empty{display:none; border:none !important;}
+  .dockzone-v{flex-direction:column; width:300px; min-width:220px; max-width:560px;}
+  #dockLeft{border-right:1px solid var(--border);}
+  #dockRight{border-left:1px solid var(--border);}
+  .dockzone-h{flex-direction:row; height:54px; min-height:44px; max-height:70vh; overflow-x:auto; overflow-y:hidden; align-items:stretch;}
+  #dockTop{border-bottom:1px solid var(--border);}
+  #dockBottom{border-top:1px solid var(--border);}
+  .zsplit{background:var(--border); flex-shrink:0; display:none;}
+  .zsplit.show{display:block;}
+  .zsplit-v{width:6px; cursor:col-resize;}
+  .zsplit-h{height:6px; cursor:row-resize;}
+  .zsplit:hover, .zsplit.dragging{background:var(--accent);}
+  #canvasWrap{flex:1; position:relative; min-width:0;}
+  /* a "pane" is a whole dockable/floatable panel (left sidebar, toolbar, staging shelf).
+     It just sizes/resizes itself; the pane's own content element handles scrolling. */
+  .pane{display:flex; flex-direction:column; overflow:hidden; min-width:0; min-height:0;}
+  .dockzone-v > .pane{flex:1 1 auto; resize:vertical; min-height:60px;}
+  .dockzone-h > .pane{flex:1 1 auto; resize:horizontal; min-width:160px;}
+  .pane.locked{resize:none;}
+  .pane.minimized{flex:0 0 auto !important; resize:none !important;}
+  .pane.minimized > *:not(.paneGrip){display:none !important;}
+  .dockzone.zone-minimized{min-width:0 !important; min-height:0 !important;}
+  /* a minimized sole-occupant pane must keep spanning its (shrunken) zone, otherwise the
+     grip collapses to content width and the restore button jumps away from where − was */
+  .dockzone.zone-minimized > .pane.minimized{flex:1 1 auto !important;}
+  .paneGrip{
+    position:relative; flex-shrink:0; height:20px; background:var(--panel2); border-bottom:1px solid var(--border);
+    cursor:grab; display:flex; align-items:center; justify-content:center;
+    color:var(--border2); font-size:9px; letter-spacing:2px; user-select:none;
+  }
+  .paneGrip:hover{background:#e5e9f1; color:var(--muted);}
+  .paneMinBtn{
+    position:absolute; right:3px; top:50%; transform:translateY(-50%);
+    width:22px; height:16px; line-height:14px; padding:0; font-size:13px; font-weight:700;
+    border:1px solid var(--border2); border-radius:3px; background:#fff; color:var(--muted); cursor:pointer;
+  }
+  .paneMinBtn:hover{background:var(--accent-soft); color:var(--accent-2); border-color:var(--accent);}
+  .pane.dockDragging{opacity:.35;}
+  .pane.floating{position:fixed; z-index:50; box-shadow:var(--shadow-pop); resize:both; margin:0; pointer-events:auto; border-radius:8px;}
+  #floatLayer{position:fixed; inset:0; pointer-events:none; z-index:49;}
+  .dockGhost{
+    position:fixed; z-index:60; pointer-events:none; background:var(--accent); color:#fff;
+    font-size:12px; font-weight:600; padding:5px 10px; border-radius:6px; box-shadow:var(--shadow-pop);
+    opacity:.92; transform:translate(-14px,-14px);
+  }
+  .dockOverlay{
+    position:fixed; z-index:55; pointer-events:none; background:var(--accent-soft); border:2px dashed var(--accent);
+    opacity:0; transition:opacity .08s; border-radius:6px;
+  }
+  .dockOverlay.show{opacity:.75;}
+  #sidebar{
+    flex:1; min-height:0; overflow:auto; background:#f2f4f9;
+    padding:10px; display:flex; flex-direction:column; gap:10px;
+  }
+  #toolbar{flex:1; min-height:0; overflow:auto;}
+  /* single-row toolbar: only the status text shrinks (ellipsis); controls keep their size */
+  #toolbar > *:not(#statusMsg){flex-shrink:0;}
+  #stageWrap{flex:1; min-height:0; min-width:0; overflow-y:auto; overflow-x:hidden; position:relative; background:#eceef2;}
+  canvas{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:default;}
+  #stageCv{position:static; inset:auto; display:block; width:100%; height:auto; cursor:default;}
+  #hint{
+    position:absolute; left:10px; top:10px; color:var(--muted); font-size:12px;
+    background:rgba(255,255,255,.9); padding:3px 9px; border-radius:6px; pointer-events:none;
+    max-width:75%; box-shadow:0 1px 3px rgba(20,28,48,.08);
+  }
+  .section{
+    border:1px solid var(--border); border-radius:10px; padding:10px;
+    background:var(--panel); box-shadow:var(--shadow);
+  }
+  .section h3{
+    font-size:11px; text-transform:uppercase; letter-spacing:.7px; color:var(--muted);
+    margin-bottom:8px; display:flex; align-items:center; gap:6px;
+  }
+  .section h3::before{content:""; width:3px; height:11px; border-radius:2px; background:var(--accent); opacity:.75;}
+  .row{display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap;}
+  .row:last-child{margin-bottom:0;}
+  .grow{flex:1; min-width:0;}
+  .empty{color:var(--muted); font-style:italic; padding:2px;}
+  #helpBox{color:var(--muted); font-size:12px; line-height:1.5;}
+  kbd{background:#eceef2; border:1px solid var(--border); border-radius:3px; padding:0 4px; font-size:11px;}
+  .menu{
+    position:fixed; background:#fff; border:1px solid var(--border); border-radius:8px;
+    box-shadow:var(--shadow-pop); z-index:56; min-width:150px; padding:4px; display:none;
+  }
+  .menu button{display:block; width:100%; border:none; text-align:left; padding:6px 10px; border-radius:5px; background:none;}
+  .menu button:hover{background:var(--accent-soft);}
+  .menu button.danger:hover{background:#fdeeec; color:var(--red);}
+  #edgeBox{
+    position:absolute; background:#fff; border:1px solid var(--border); border-radius:8px;
+    box-shadow:var(--shadow-pop); z-index:20; padding:8px; display:none;
+    align-items:center; gap:6px; font-size:12px; color:var(--muted);
+  }
+  #authBack{
+    display:none; position:fixed; inset:0; z-index:40;
+    background:rgba(20,25,32,.35); align-items:center; justify-content:center;
+  }
+  #authBox{
+    background:var(--panel); border:1px solid var(--border2); border-radius:12px;
+    box-shadow:var(--shadow-pop); padding:20px 22px; width:290px;
+    display:flex; flex-direction:column; gap:9px;
+  }
+  #authBox input{width:100%; box-sizing:border-box;}
+  #authForgot{
+    background:none; border:none; box-shadow:none; padding:0; align-self:flex-start;
+    color:var(--accent); font-size:12px; cursor:pointer;
+  }
+  #authForgot:hover{text-decoration:underline; background:none;}
+  #guideBack{
+    display:none; position:fixed; inset:0; z-index:52;
+    background:rgba(20,25,32,.35); align-items:center; justify-content:center;
+  }
+  #guideBox{
+    background:var(--panel); border:1px solid var(--border2); border-radius:12px;
+    box-shadow:var(--shadow-pop); padding:20px 24px; width:540px; max-width:92vw;
+    max-height:85vh; overflow:auto; display:flex; flex-direction:column; gap:11px;
+    font-size:13px; line-height:1.55;
+  }
+  #guideBox h2{font-size:17px;}
+  #guideBox ol{margin:0; padding-left:20px; display:flex; flex-direction:column; gap:8px;}
+  #guideBox li b{color:var(--accent-2);}
+  #guideBox .guideNote{color:var(--muted); font-size:12px;}
+  #helpBox details{margin-bottom:6px; border:1px solid var(--border); border-radius:7px; padding:5px 8px; background:var(--panel2);}
+  #helpBox details:last-child{margin-bottom:0;}
+  #helpBox summary{cursor:pointer; font-weight:600; color:var(--text); user-select:none;}
+  #helpBox summary:hover{color:var(--accent-2);}
+  #helpBox details[open] summary{margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div id="main">
+  <div id="dockTop" class="dockzone dockzone-h">
+  <div class="pane locked" data-pane="toolbar" data-title="Toolbar">
+  <div id="toolbar">
+  <div class="seg" title="Select moves and places objects; Draw room sketches the outline">
+    <button id="modeSelect" class="active">Select</button>
+    <button id="modeDraw">Draw room</button>
+  </div>
+  <div class="sep"></div>
+  <div class="seg" id="viewSeg" title="Flat floor plan or 3D view — purely visual; heights, stacking and fit rules stay exactly the same">
+    <button id="view2d">Flat</button>
+    <button id="view3d">3D</button>
+  </div>
+  <div class="sep"></div>
+  <button id="fitObjectsBtn" class="primary" title="Automatically arrange all unlocked objects (staged + placed) into the room, highest priority first — shown as a proposal you can accept or cancel">✨ Fit objects</button>
+  <div class="sep"></div>
+  <button id="rotCCW" class="small" title="Rotate selected object 90° counter-clockwise (Shift+R)">⟲ 90°</button>
+  <button id="rotCW" class="small" title="Rotate selected object 90° clockwise (R)">⟳ 90°</button>
+  <label class="inline">to <input type="number" id="rotAbs" value="45" step="1" style="width:56px"> °
+    <button id="rotSet" class="small" title="Set the selected object's angle to exactly this value">Set</button>
+  </label>
+  <div class="sep"></div>
+  <button id="undoBtn" class="small" title="Undo (Ctrl+Z)">↶ Undo</button>
+  <button id="redoBtn" class="small" title="Redo (Ctrl+Y)">↷ Redo</button>
+  <button id="fitViewBtn" class="small" title="Zoom to fit the room (Home)">Fit view</button>
+  <button id="resetLayoutBtn" class="small" title="Restore all panels to their default docked position and size">⤢ Layout</button>
+  <div class="sep"></div>
+  <span id="statusMsg" style="color:var(--muted); flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+  <button id="helpBtn" class="small" style="flex-shrink:0" title="Open the quick-start guide — a short walkthrough of how to use Room Fitter">❓ Guide</button>
+  <button id="userBtn" class="small" style="flex-shrink:0" title="Sign in to save your workspace to the cloud and open it from any device">👤 Sign in</button>
+  </div>
+  </div>
+  </div>
+  <div id="dockTopSplit" class="zsplit zsplit-h" data-zone="top" title="Drag to resize"></div>
+  <div id="dockMid">
+  <div id="dockLeft" class="dockzone dockzone-v">
+  <div class="pane" data-pane="sidebar" data-title="Panel">
+  <div class="paneGrip" title="Drag to move, dock, or float this panel">⣿⣿⣿<button class="paneMinBtn" title="Minimize this panel">−</button></div>
+  <div id="sidebar">
+
+    <div class="section">
+      <h3>Workspace</h3>
+      <div class="row">
+        <select id="roomSelect" class="grow"></select>
+      </div>
+      <div class="row">
+        <button id="newRoomBtn" class="small">New room</button>
+        <button id="renameRoomBtn" class="small">Rename</button>
+        <button id="deleteRoomBtn" class="small danger">Delete</button>
+      </div>
+      <div class="row">
+        <label class="inline">W <input type="number" id="roomW" class="mini" min="10"></label>
+        <label class="inline">D <input type="number" id="roomD" class="mini" min="10"></label>
+        <label class="inline">H <input type="number" id="roomH" class="mini" min="0"></label>
+        <span class="unit" style="color:var(--muted)">cm</span>
+      </div>
+      <div class="row">
+        <span style="color:var(--muted)">Units</span>
+        <div class="seg" id="unitSeg" title="How lengths are shown and typed — imperial (feet/inches) or metric (cm)">
+          <button id="unitImp">ft / in</button>
+          <button id="unitMet">cm</button>
+        </div>
+      </div>
+      <div class="row" id="fsRow">
+        <button id="fileLinkBtn" class="small" title="Create a JSON data file that auto-saves your workspace — survives clearing browser data">Link file…</button>
+        <button id="fileOpenBtn" class="small" title="Open an existing Room Fitter data file">Open…</button>
+        <button id="fileReconnectBtn" class="small" style="display:none" title="Reconnect the data file used last time">Reconnect</button>
+        <span id="fileLbl" class="grow" style="color:var(--muted); text-align:right; overflow:hidden; text-overflow:ellipsis;"></span>
+      </div>
+      <div class="row">
+        <button id="exportBtn" class="small" title="Download a one-off copy of the workspace as JSON">Export</button>
+        <button id="importBtn" class="small" title="Load a workspace from a JSON copy">Import</button>
+        <input type="file" id="importFile" accept=".json" style="display:none">
+        <span class="grow" style="text-align:right; color:var(--muted)" id="saveNote">auto-saved</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Blueprint image</h3>
+      <div class="row">
+        <button id="aiImportBtn" class="grow primary" title="Pick a floor-plan image (jpg/png). AI detects each room, prefills its dimensions and contents, and aligns the image behind it. Needs the access password (or an Anthropic API key).">✨ Auto-import rooms…</button>
+        <button id="aiKeyBtn" class="small" title="Admin: paste the Anthropic API key once and choose a short access password. Users: type the password to unlock auto-import.">🔑 Key</button>
+        <input type="file" id="aiFile" accept="image/*" style="display:none">
+      </div>
+      <div class="row">
+        <button id="bpLoadBtn" class="small" title="Show an image behind the current room only — no analysis">Load image…</button>
+        <input type="file" id="bpFile" accept="image/*" style="display:none">
+      </div>
+      <div id="bpControls">
+        <div class="row">
+          <button id="bpCalBtn" class="small" title="Click two points on the image, then enter the real distance between them">Calibrate</button>
+          <button id="bpRemoveBtn" class="small danger">Remove</button>
+        </div>
+        <div class="row">
+          <label class="inline grow">Opacity <input type="range" id="bpOpacity" min="0" max="100" value="45" class="grow"></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>New object</h3>
+      <div class="row">
+        <input type="text" id="objName" placeholder="Name (e.g. Sofa)" class="grow">
+        <input type="color" id="objColor" value="#7aa2d6" title="Colour" style="width:34px; height:26px; padding:1px; border:1px solid var(--border); border-radius:5px;">
+      </div>
+      <div class="row">
+        <label class="inline">W <input type="number" id="objW" class="mini" value="100" min="1"></label>
+        <label class="inline">D <input type="number" id="objD" class="mini" value="60" min="1"></label>
+        <label class="inline" title="Leave blank for half the room height">H <input type="number" id="objH" class="mini" min="0" placeholder="½ room"></label>
+        <span class="unit" style="color:var(--muted)">cm</span>
+      </div>
+      <div class="row">
+        <button id="addObjBtn" class="primary" style="width:100%">Add to staging</button>
+      </div>
+    </div>
+
+    <div class="section" id="propsSection" style="display:none">
+      <h3>Selected object</h3>
+      <div class="row">
+        <input type="text" id="pName" class="grow" title="Rename the object">
+        <input type="color" id="pColor" title="Colour" style="width:34px; height:26px; padding:1px; border:1px solid var(--border); border-radius:5px;">
+      </div>
+      <div class="row">
+        <span style="color:var(--muted); width:52px">Size</span>
+        <label class="inline">W <input type="number" id="pW" class="mini" min="1"></label>
+        <label class="inline">D <input type="number" id="pD" class="mini" min="1"></label>
+        <label class="inline">H <input type="number" id="pH" class="mini" min="0"></label>
+      </div>
+      <div class="row" id="rowPos">
+        <span style="color:var(--muted); width:52px">Position</span>
+        <label class="inline" title="Distance from the left">X <input type="number" id="pX" class="mini"></label>
+        <label class="inline" title="Distance from the top">Y <input type="number" id="pY" class="mini"></label>
+        <label class="inline" title="Height above the floor">Z <input type="number" id="pZ" class="mini" min="0"></label>
+      </div>
+      <div class="row" id="rowAngle">
+        <span style="color:var(--muted); width:52px">Angle</span>
+        <label class="inline"><input type="number" id="pA" class="mini" step="1"> °</label>
+      </div>
+      <div class="row" id="rowMeta">
+        <label class="inline" title="Locked objects can’t be moved, resized or auto-fitted (L)"><input type="checkbox" id="pLock"> Locked</label>
+        <label class="inline" title="1–10; “Fit objects” places higher priority first ([ / ])">Priority <input type="number" id="pPrio" class="mini" min="1" max="10"></label>
+      </div>
+      <div class="row">
+        <button id="propPlace" class="grow primary">Place in room</button>
+        <button id="propDelete" class="small danger" title="Delete permanently">Delete</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Help</h3>
+      <div id="helpBox">
+        <div style="margin-bottom:8px">
+          <b>Quick start:</b> ① set the room size in <i>Workspace</i> above (or use <i>Draw room</i> / <i>✨ Auto-import</i>) → ② create furniture in <i>New object</i> → ③ drag it from the Staging shelf into the room — green fits, red is blocked → ④ or click <i>✨ Fit objects</i> to arrange everything automatically. Step-by-step walkthrough: the <b>❓ Guide</b> button in the toolbar.
+        </div>
+        <details open>
+          <summary>Objects &amp; placing</summary>
+          <b>Objects</b> start in the Staging panel (bottom, by default). Drag them into the room and back out; right-click any object for more actions; double-click one to rename it. Leave H blank when creating an object to give it half the room height. Hold <kbd>Ctrl</kbd> while dragging to snap an edge flush to a nearby wall or another object (a dashed line shows the alignment).<br>
+          <b>Confirm:</b> green = fits — click the object to confirm. Red = blocked. <kbd>Esc</kbd>/right-click reverts.<br>
+          <b><kbd>Esc</kbd></b> cancels whatever is in progress: an unconfirmed placement, or any drag before you release the button.<br>
+          <b><kbd>Alt</kbd>+drag</b> an object slides it up/down the height axis (up-right = higher). <b><kbd>Alt</kbd>+<kbd>Shift</kbd>+drag</b> moves a horizontal surface vertically: an object’s bottom (its top stays put), its top, the room floor (the floor itself rises toward the fixed ceiling), or the ceiling — the lowest surface under the cursor wins, objects before the room.
+        </details>
+        <details>
+          <summary>Room shape &amp; drawing</summary>
+          <b>Reshape:</b> drag the floor corner handles (□) — the ceiling always keeps the floor’s shape. Double-click a wall to add a corner; click a corner to remove it. Click a wall of the room or of the selected object (at floor or ceiling height) to type its exact length.<br>
+          <b><kbd>Shift</kbd>+drag</b> a wall/side pushes that surface sideways, stretching the neighbours; add <kbd>Ctrl</kbd> to move it along one axis only.<br>
+          <b><kbd>Ctrl</kbd></b> while drawing or dragging corners snaps to right angles.
+        </details>
+        <details>
+          <summary>View, units &amp; panels</summary>
+          <b>View:</b> wheel = zoom, middle-drag or <kbd>Space</kbd>+drag = pan.<br>
+          <b>Flat / 3D:</b> the toolbar toggle only changes what is drawn — in Flat view heights, elevation (Z) and stacking rules still apply exactly as in 3D; the height axis is simply not shown.<br>
+          <b>Units:</b> the ft/in ⇄ cm toggle is in the Workspace section (imperial is the default). In imperial the canvas shows feet′inches″ (e.g. 8′4″); the left-pane inputs are typed in inches (dialogs also accept 5'10").<br>
+          <b>Panels:</b> the left panel and the Staging panel can each be dragged (by the thin grip strip “⣿⣿⣿” at their top) toward an edge of the window to dock them there, or dropped away from an edge to float freely; resize either from their edge or corner. The <b>−</b> button on their grip minimizes them to a thin strip (click <b>+</b> to restore). The toolbar stays locked in place at the top. <b>⤢ Layout</b> in the toolbar restores the default arrangement.
+        </details>
+        <details>
+          <summary>Fit objects &amp; auto-import</summary>
+          <b>Fit objects:</b> auto-arranges all unlocked objects by priority; review the <i>proposed</i> layout, tweak it, then Accept or Cancel.<br>
+          <b>Auto-import:</b> “✨ Auto-import rooms” reads a floor-plan image with AI. Click <i>🔑 Key</i> once as admin to paste the Anthropic API key and choose a short access password; afterwards anyone using this workspace just types the password. Every detected room is created with its dimensions and contents prefilled, and the image aligned behind it. Rooms without a stated ceiling height get the standard height (250&nbsp;cm / 8&nbsp;ft). Review the result — sizes and positions are estimates.
+        </details>
+        <details>
+          <summary>Saving &amp; accounts</summary>
+          <b>Data:</b> auto-saved in the browser; use “Link file…” to also auto-save to a JSON file that survives clearing browser data. Fit is checked against the floor outline and room height.<br>
+          <b>Accounts:</b> click <b>👤 Sign in</b> (top right) and sign in with email + password — your workspace is then saved to the cloud on every change and follows you to any device where you open this tool. “Create account” takes a copy of what’s currently on screen. Offline changes are kept on the device and sync when you’re next online (newest copy wins); the 👤 menu has “Sync now”, “Switch account” and “Sign out”. Signed out, you work in a local workspace that stays on this device.
+        </details>
+        <details>
+          <summary>Keyboard shortcuts &amp; mouse modifiers</summary>
+          <kbd>Tab</kbd> cycle objects (<kbd>Shift+Tab</kbd> back) · arrows move (Shift=10) · <kbd>PgUp</kbd>/<kbd>PgDn</kbd> raise/lower (Z) (Shift=10) · <kbd>R</kbd>/<kbd>Shift+R</kbd> rotate cw/ccw 90° · <kbd>Esc</kbd> cancel pending placement/mode/menu or deselect · <kbd>Enter</kbd> confirm/place (in a field: apply the edit) · <kbd>Ctrl+Enter</kbd> confirm/place even while typing in a field · <kbd>P</kbd> room⇄staging · <kbd>L</kbd> lock · <kbd>[</kbd>/<kbd>]</kbd> priority · <kbd>F2</kbd> or double-click rename · <kbd>Ctrl+D</kbd> duplicate · <kbd>Del</kbd>/<kbd>Backspace</kbd> to staging · <kbd>+</kbd>/<kbd>−</kbd> zoom · <kbd>Home</kbd> fit view · <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd> (or <kbd>Ctrl+Shift+Z</kbd>) undo/redo.<br>
+          <b>Mouse + modifier (while dragging):</b> <kbd>Ctrl</kbd>+drag an object snaps its edge flush to a nearby wall or object · <kbd>Ctrl</kbd> while drawing a room or dragging a corner snaps to right angles · <kbd>Shift</kbd>+drag a wall/side pushes that surface sideways, stretching the neighbours (add <kbd>Ctrl</kbd> to move it along one axis only) · <kbd>Alt</kbd>+drag an object raises/lowers it (up-right = higher) · <kbd>Alt</kbd>+<kbd>Shift</kbd>+drag moves a horizontal surface — an object’s bottom or top, the room floor, or the ceiling (lowest surface under the cursor wins) · middle-drag or <kbd>Space</kbd>+drag pans the view · wheel zooms.
+        </details>
+      </div>
+    </div>
+
+  </div>
+  </div>
+  </div>
+  <div id="dockLeftSplit" class="zsplit zsplit-v" data-zone="left" title="Drag to resize"></div>
+  <div id="canvasWrap">
+    <canvas id="cv"></canvas>
+    <div id="hint"></div>
+    <div id="ctxMenu" class="menu"></div>
+    <div id="proposalBar" style="display:none; position:absolute; top:10px; left:50%; transform:translateX(-50%);
+         background:#fff7df; border:1.5px solid #d9a916; border-radius:8px; padding:8px 14px; z-index:15;
+         box-shadow:0 4px 14px rgba(20,25,32,.18); align-items:center; gap:10px; max-width:90%;">
+      <b style="color:#8a6d00">PROPOSED layout — not saved yet</b>
+      <span id="proposalInfo" style="color:#8a6d00"></span>
+      <button id="proposalAccept" style="background:#2f9e63; border-color:#2f9e63; color:#fff">Accept changes</button>
+      <button id="proposalCancel">Cancel (revert)</button>
+    </div>
+    <div id="edgeBox">
+      <span>Edge</span>
+      <input type="number" id="edgeLen" min="1" style="width:72px">
+      <span class="unit">cm</span>
+      <button id="edgeApply">Apply</button>
+    </div>
+  </div>
+  <div id="dockRightSplit" class="zsplit zsplit-v" data-zone="right" title="Drag to resize"></div>
+  <div id="dockRight" class="dockzone dockzone-v"></div>
+  </div>
+  <div id="dockBottomSplit" class="zsplit zsplit-h" data-zone="bottom" title="Drag to resize"></div>
+  <div id="dockBottom" class="dockzone dockzone-h">
+  <div class="pane" data-pane="staging" data-title="Staging">
+  <div class="paneGrip" title="Drag to move, dock, or float this panel">⣿⣿⣿<button class="paneMinBtn" title="Minimize this panel">−</button></div>
+  <div id="stageWrap"><canvas id="stageCv"></canvas></div>
+  </div>
+  </div>
+</div>
+<div id="floatLayer"></div>
+
+<div id="authBack">
+  <form id="authBox">
+    <b style="font-size:15px">Sign in</b>
+    <span style="color:var(--muted); font-size:12px; line-height:1.4">Your workspace is saved to your account in the cloud and follows you to any device where you open this tool.</span>
+    <input id="authEmail" type="email" placeholder="email" autocomplete="username" required>
+    <input id="authPw" type="password" placeholder="password (6+ characters)" autocomplete="current-password" minlength="6" required>
+    <div id="authErr" style="color:var(--red); font-size:12px; min-height:15px"></div>
+    <div style="display:flex; gap:8px">
+      <button type="submit" class="primary" id="authGo">Sign in</button>
+      <button type="button" id="authCreate">Create account</button>
+      <button type="button" id="authCancel">Cancel</button>
+    </div>
+    <button type="button" id="authForgot">Forgot password?</button>
+  </form>
+</div>
+
+<div id="guideBack">
+  <div id="guideBox">
+    <h2>Welcome to Room Fitter 👋</h2>
+    <span style="color:var(--muted)">Plan a room and find out what actually fits — in five small steps:</span>
+    <ol>
+      <li><b>Set up the room.</b> Type its real width, depth and height in the <i>Workspace</i> section (left panel), or click <i>Draw room</i> in the toolbar and click out the outline corner by corner. Have a floor-plan image? <i>✨ Auto-import rooms…</i> reads it with AI and builds every room for you.</li>
+      <li><b>Create your furniture.</b> In the <i>New object</i> section, give it a name and its measurements, then click <i>Add to staging</i> — it appears on the shelf at the bottom.</li>
+      <li><b>Drag it into the room.</b> <span style="color:var(--green); font-weight:600">Green</span> means it fits — click it once more to confirm. <span style="color:var(--red); font-weight:600">Red</span> means it’s blocked by a wall or another object. <kbd>Esc</kbd> cancels; hold <kbd>Ctrl</kbd> while dragging to snap flush against a wall.</li>
+      <li><b>Or let the tool arrange it.</b> <i>✨ Fit objects</i> auto-places everything by priority and shows a proposal — review it, then Accept or Cancel.</li>
+      <li><b>Keep your work.</b> Everything auto-saves in this browser. Click <i>👤 Sign in</i> to sync your workspace to the cloud and continue on any device, or <i>Link file…</i> to also save to a JSON file.</li>
+    </ol>
+    <span class="guideNote">Tips: the Flat / 3D toggle switches the view · wheel zooms, middle-drag pans · right-click anything for more actions. The <b>Help</b> section in the left panel explains every feature and shortcut, and the <b>❓ Guide</b> button in the toolbar reopens this window anytime.</span>
+    <div style="display:flex; justify-content:flex-end">
+      <button type="button" class="primary" id="guideClose">Got it — start planning</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================
+   Room Fitter — single-file room / furniture planning tool
+   Units: centimetres in world space. view.s = pixels per cm.
+   ========================================================= */
+
+const LS_BASE = "roomFitterWorkspace_v1";   // signed-out workspace; per-account cache = LS_BASE + ":" + uid
+
+/* ---------- cloud accounts (ADMIN: fill in these two values once) ----------
+   Users sign in with email + password and their workspace follows them to any
+   device. Backed by a free Firebase project — setup steps are in
+   HOW-TO-IMPLEMENT.md ("User accounts & cross-device sync"). */
+const CLOUD = {
+  apiKey: "AIzaSyBYngkQDmu1gzJTWmeR7lxT6cX_p2XkVes",   // Firebase → Settings → General → "Web API Key" (or the apiKey from your web app's config snippet)
+  dbUrl:  "https://main-3f80c-default-rtdb.firebaseio.com",   // Firebase → Realtime Database → the database URL
+};
+function cloudReady() { return !!(CLOUD.apiKey && CLOUD.dbUrl); }
+
+const AUTH_LS = "rfCloudAuth";              // remembered sign-in (refresh token)
+let cloudUser = null;                       // { email, uid, idToken, refreshToken, expiresAt }
+try { cloudUser = JSON.parse(localStorage.getItem(AUTH_LS)); } catch (e) {}
+if (!cloudUser || !cloudUser.uid || !cloudUser.refreshToken) cloudUser = null;
+function wsKey() { return cloudUser ? LS_BASE + ":" + cloudUser.uid : LS_BASE; }
+const EPS = 0.1;                       // cm tolerance so flush-to-wall counts as fitting
+const OBL = { x: Math.SQRT1_2, y: -Math.SQRT1_2 }; // 45° direction of the height axis
+const OBF = 1 / 3;                     // drawn length of the height axis = height / 3
+const CM_PER_IN = 2.54;
+
+/* ---------- display units (everything is stored in cm) ---------- */
+function unitLbl() { return ws && ws.units === "in" ? "in" : "cm"; }
+function toU(cm) {                     // cm -> number in the display unit
+  const v = ws && ws.units === "in" ? cm / CM_PER_IN : cm;
+  return Math.round(v * 10) / 10;
+}
+function fromU(v) {                    // typed value in the display unit -> cm
+  const s = String(v == null ? "" : v).trim();
+  if (!s) return NaN;
+  if (ws && ws.units === "in") {
+    const ftIn = s.match(/^(-?\d+(?:\.\d+)?)\s*'\s*(?:(\d+(?:\.\d+)?)\s*(?:"|”|in)?\s*)?$/);
+    if (ftIn) return ((+ftIn[1]) * 12 + (+ftIn[2] || 0)) * CM_PER_IN;
+    return parseFloat(s) * CM_PER_IN;
+  }
+  return parseFloat(s);
+}
+function fmtFtIn(cm) {                 // 177.8 -> 5'10"  (feet-inch notation)
+  const neg = cm < 0 ? "-" : "";
+  const inches = Math.abs(cm) / CM_PER_IN;
+  let ft = Math.floor(inches / 12);
+  let rem = Math.round((inches - ft * 12) * 10) / 10;
+  if (rem >= 12) { ft += 1; rem = 0; }
+  if (ft === 0) return neg + rem + "″";
+  return neg + ft + "′" + (rem ? rem + "″" : "");
+}
+/* canvas font size for measurement labels: larger in imperial so ′/″ stay readable */
+function lenFontPx(base) { return ws && ws.units === "in" ? base + 3 : base; }
+function fmtLen(cm) {                  // lengths shown on the canvas / in messages
+  return ws && ws.units === "in" ? fmtFtIn(cm) : toU(cm) + " cm";
+}
+function fmtDim(cm) {                  // compact form for object dimension tags
+  return ws && ws.units === "in" ? fmtFtIn(cm) : String(toU(cm));
+}
+
+/* ---------- state ---------- */
+let ws = null;                 // { rooms:[], objects:[], currentRoomId }
+let view = { s: 1.5, ox: 60, oy: 60 };
+/* Flat (default) vs 3D is purely how things are DRAWN — positions, heights and
+   fit checks are identical in both. Remembered per browser. */
+let flatView = true;
+try { flatView = localStorage.getItem("rfFlatView") !== "0"; } catch (e) {}
+let mode = "select";           // select | draw | calibrate
+let selectedId = null;
+let pendingId = null;          // object being moved/rotated/resized, awaiting confirm
+let pendingOrig = null;        // snapshot to revert to on cancel
+let drag = null;               // active mouse-drag descriptor
+let floatingId = null;         // object following the cursor ("Reposition")
+let spaceHeld = false, ctrlHeld = false;
+let drawPts = [];              // vertices while drawing a room outline
+let calPts = [];               // calibration clicks (world coords)
+let mouseWorld = { x: 0, y: 0 };
+let selEdge = null;            // {kind:"room",layer:"floor"|"ceil",i} | {kind:"obj",id,i} (ceil = same edge shown at ceiling height)
+let menuVertex = null;         // {layer,i} highlighted while its menu is open
+let stagingSlots = [];         // screen-space hit rects for shelf objects
+let moveGuides = null;         // {x,y} world snap lines to draw while Ctrl-moving
+const imgCache = {};           // roomId -> HTMLImageElement
+
+/* undo/redo */
+let undoStack = [], redoStack = [], lastState = null;
+/* "Fit objects" proposal */
+let proposalMode = false, proposalBackup = null;
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+function defaultRoom(name) {
+  const poly = [{x:0,y:0},{x:400,y:0},{x:400,y:300},{x:0,y:300}];
+  return { id: uid(), name: name || "Room 1", height: 250, base: 0,
+           poly, blueprint: null };
+}
+function migrate() {
+  if (ws.units !== "in" && ws.units !== "cm") ws.units = "in";   // imperial by default
+  for (const r of ws.rooms) {
+    delete r.ceil;   // the ceiling always has the floor's shape now
+    if (typeof r.height !== "number") r.height = 250;
+    if (typeof r.base !== "number") r.base = 0;   // floor lift above the ground plane
+  }
+  for (const o of ws.objects) {
+    if (typeof o.h !== "number") o.h = 0;
+    if (typeof o.elev !== "number") o.elev = 0;
+    if (o.hasPose === undefined) o.hasPose = o.state === "placed";
+    if (typeof o.locked !== "boolean") o.locked = false;
+    if (typeof o.priority !== "number") o.priority = 5;
+    if (typeof o.color !== "string") o.color = "#7aa2d6";   // hand-edited files may omit it
+  }
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(wsKey());
+    if (raw) { ws = JSON.parse(raw); }
+  } catch (e) { console.warn("load failed", e); }
+  if (!ws || !Array.isArray(ws.rooms) || !ws.rooms.length) {
+    ws = { rooms: [defaultRoom()], objects: [], currentRoomId: null, units: "in" };
+    ws.currentRoomId = ws.rooms[0].id;
+  }
+  if (!ws.rooms.find(r => r.id === ws.currentRoomId)) ws.currentRoomId = ws.rooms[0].id;
+  migrate();
+}
+
+let saveTimer = null;
+function save() {
+  if (proposalMode) { saveNote.textContent = "proposal — not saved"; return; }
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const s = JSON.stringify(ws);
+    if (s !== lastState) {
+      if (lastState !== null) { undoStack.push(lastState); if (undoStack.length > 60) undoStack.shift(); }
+      redoStack.length = 0;
+      lastState = s;
+    }
+    try {
+      localStorage.setItem(wsKey(), s);
+      saveNote.textContent = "auto-saved " + new Date().toLocaleTimeString();
+    } catch (e) {
+      saveNote.textContent = "⚠ browser save failed";
+    }
+    if (cloudUser) { const t = Date.now(); setLocalStamp(t); queueCloudSave(s, t); }
+    writeToFile(s);
+    updateUndoButtons();
+  }, 150);
+}
+function restoreState(s) {
+  ws = JSON.parse(s);
+  lastState = s;
+  migrate();
+  if (!ws.rooms.find(r => r.id === ws.currentRoomId)) ws.currentRoomId = ws.rooms[0].id;
+  pendingId = null; pendingOrig = null; selectedId = null; floatingId = null;
+  selEdge = null; hideMenu(); closeEdgeBox();
+  try { localStorage.setItem(wsKey(), s); } catch (e) {}
+  if (cloudUser) { const t = Date.now(); setLocalStamp(t); queueCloudSave(s, t); }
+  writeToFile(s);
+  updateUndoButtons(); renderSidebar();
+}
+function undo() {
+  if (!undoStack.length) return;
+  clearTimeout(saveTimer);
+  redoStack.push(JSON.stringify(ws));
+  restoreState(undoStack.pop());
+  setStatus("Undone.");
+}
+function redo() {
+  if (!redoStack.length) return;
+  clearTimeout(saveTimer);
+  undoStack.push(JSON.stringify(ws));
+  restoreState(redoStack.pop());
+  setStatus("Redone.");
+}
+function updateUndoButtons() {
+  undoBtn.disabled = !undoStack.length;
+  redoBtn.disabled = !redoStack.length;
+}
+
+/* ---------- JSON data-file persistence (File System Access API) ---------- */
+let fileHandle = null, fileWriteQueued = null;
+const fsSupported = typeof window !== "undefined" && !!window.showSaveFilePicker &&
+                    typeof indexedDB !== "undefined";
+/* each account remembers its own linked data file (per device) */
+function fsIdbKey() { return cloudUser ? "fileHandle:" + cloudUser.uid : "fileHandle"; }
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const q = indexedDB.open("roomFitterFS", 1);
+    q.onupgradeneeded = () => q.result.createObjectStore("kv");
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error);
+  });
+}
+async function idbSet(k, v) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("kv", "readwrite");
+    tx.objectStore("kv").put(v, k);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGet(k) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const q = db.transaction("kv").objectStore("kv").get(k);
+    q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+  });
+}
+function updateFsUi(reconnectName) {
+  if (!fsSupported) { fsRow.style.display = "none"; return; }
+  fileReconnectBtn.style.display = (!fileHandle && reconnectName) ? "" : "none";
+  fileLbl.textContent = fileHandle ? "✓ " + fileHandle.name
+                       : reconnectName ? reconnectName : "no file linked";
+  fileLbl.title = fileHandle ? "Workspace auto-saves to this file" : "";
+}
+async function writeToFile(s) {
+  if (!fileHandle) return;
+  if (fileWriteQueued) { fileWriteQueued = s; return; }   // serialize writes
+  fileWriteQueued = s;
+  try {
+    while (fileWriteQueued) {
+      const data = fileWriteQueued; fileWriteQueued = null;
+      const w = await fileHandle.createWritable();
+      await w.write(data);
+      await w.close();
+      fileWriteQueued = fileWriteQueued === data ? null : fileWriteQueued;
+    }
+    fileLbl.textContent = "✓ " + fileHandle.name;
+  } catch (e) {
+    fileWriteQueued = null;
+    fileLbl.textContent = "⚠ file save failed";
+  }
+}
+async function linkNewFile() {
+  try {
+    fileHandle = await window.showSaveFilePicker({
+      suggestedName: "room-fitter-data.json",
+      types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+    });
+    await idbSet(fsIdbKey(), fileHandle);
+    await writeToFile(JSON.stringify(ws));
+    updateFsUi();
+    setStatus("Workspace now auto-saves to " + fileHandle.name);
+  } catch (e) { /* user cancelled */ }
+}
+async function adoptFileContents(h) {
+  const f = await h.getFile();
+  const text = await f.text();
+  if (text.trim()) {
+    const data = JSON.parse(text);
+    if (!data || !Array.isArray(data.rooms) || !Array.isArray(data.objects)) throw new Error("bad format");
+    if (!confirm("Load workspace from “" + h.name + "”? This replaces what is currently shown.")) return false;
+    ws = data;
+    if (!ws.rooms.length) ws.rooms.push(defaultRoom());
+    if (!ws.rooms.find(x => x.id === ws.currentRoomId)) ws.currentRoomId = ws.rooms[0].id;
+    migrate();
+    lastState = JSON.stringify(ws);
+    undoStack.length = 0; redoStack.length = 0;
+    pendingId = null; pendingOrig = null; selectedId = null;
+    try { localStorage.setItem(wsKey(), lastState); } catch (e) {}
+    fitView(); renderSidebar(); updateUndoButtons();
+  }
+  return true;
+}
+async function openExistingFile() {
+  try {
+    const [h] = await window.showOpenFilePicker({
+      types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+    });
+    if (!(await adoptFileContents(h))) return;
+    fileHandle = h;
+    await idbSet(fsIdbKey(), h);
+    updateFsUi();
+    setStatus("Connected to " + h.name);
+  } catch (e) { if (e && e.name !== "AbortError") alert("Could not open file: " + e.message); }
+}
+async function reconnectFile() {
+  try {
+    const h = await idbGet(fsIdbKey());
+    if (!h) return;
+    if ((await h.requestPermission({ mode: "readwrite" })) !== "granted") return;
+    if (!(await adoptFileContents(h))) return;
+    fileHandle = h;
+    updateFsUi();
+    setStatus("Reconnected to " + h.name);
+  } catch (e) { alert("Could not reconnect: " + e.message); }
+}
+async function initFS() {
+  if (!fsSupported) { fsRow.style.display = "none"; return; }
+  try {
+    const h = await idbGet(fsIdbKey());
+    updateFsUi(h ? h.name + " (not connected)" : null);
+  } catch (e) { updateFsUi(null); }
+}
+
+/* ---------- cloud accounts & sync ----------
+   Sign in with email + password (Firebase Auth REST API) and the workspace is
+   mirrored to a Firebase Realtime Database on every change, so the same
+   account sees the same workspace from any device. Signed out you work in a
+   local workspace that never leaves this browser. Conflicts are resolved
+   last-write-wins using a saved-at timestamp; a local cache per account keeps
+   things working offline until the next sync. */
+const WS_STAMP_LS = "rfWsStamp";   // per-account: when this device last changed the workspace
+function localStamp() {
+  try { return +localStorage.getItem(WS_STAMP_LS + ":" + cloudUser.uid) || 0; } catch (e) { return 0; }
+}
+function setLocalStamp(t) {
+  try { localStorage.setItem(WS_STAMP_LS + ":" + cloudUser.uid, String(t)); } catch (e) {}
+}
+
+async function authCall(action, body) {
+  const r = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:" + action + "?key=" + CLOUD.apiKey,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const code = ((j.error && j.error.message) || "UNKNOWN").split(" ")[0].split(":")[0];
+    throw new Error({
+      EMAIL_NOT_FOUND: "No account with that email — use “Create account”.",
+      INVALID_PASSWORD: "Wrong password.",
+      INVALID_LOGIN_CREDENTIALS: "Wrong email or password.",
+      EMAIL_EXISTS: "An account with that email already exists — use “Sign in”.",
+      WEAK_PASSWORD: "The password must be at least 6 characters.",
+      INVALID_EMAIL: "That doesn’t look like a valid email address.",
+      TOO_MANY_ATTEMPTS_TRY_LATER: "Too many attempts — wait a few minutes and try again.",
+    }[code] || "Sign-in failed (" + code + ").");
+  }
+  return j;
+}
+function rememberAuth(j, email) {
+  cloudUser = {
+    email: email || j.email, uid: j.localId,
+    idToken: j.idToken, refreshToken: j.refreshToken,
+    expiresAt: Date.now() + (+j.expiresIn || 3600) * 1000 - 60000,
+  };
+  try { localStorage.setItem(AUTH_LS, JSON.stringify(cloudUser)); } catch (e) {}
+}
+async function getIdToken() {
+  if (!cloudUser) throw new Error("not signed in");
+  if (cloudUser.idToken && Date.now() < cloudUser.expiresAt) return cloudUser.idToken;
+  const r = await fetch("https://securetoken.googleapis.com/v1/token?key=" + CLOUD.apiKey, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ grant_type: "refresh_token", refresh_token: cloudUser.refreshToken }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error("SESSION_EXPIRED");
+  cloudUser.idToken = j.id_token;
+  cloudUser.refreshToken = j.refresh_token || cloudUser.refreshToken;
+  cloudUser.expiresAt = Date.now() + (+j.expires_in || 3600) * 1000 - 60000;
+  try { localStorage.setItem(AUTH_LS, JSON.stringify(cloudUser)); } catch (e) {}
+  return cloudUser.idToken;
+}
+function cloudRecUrl(tok) {
+  return CLOUD.dbUrl.replace(/\/+$/, "") + "/workspaces/" + cloudUser.uid + ".json?auth=" + tok;
+}
+async function cloudFetch() {          // -> { savedAt, data } | null
+  const r = await fetch(cloudRecUrl(await getIdToken()));
+  if (!r.ok) throw new Error("cloud read failed (HTTP " + r.status + ")");
+  return r.json();
+}
+
+/* pushing to the cloud: debounced and serialized, retried while offline */
+let cloudTimer = null, cloudBusy = false, cloudNext = null;
+function queueCloudSave(s, stamp) {
+  if (!cloudUser || !cloudReady()) return;
+  cloudNext = { s, stamp };
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(pushCloud, 1200);
+}
+async function pushCloud() {
+  if (cloudBusy || !cloudNext || !cloudUser) return;
+  cloudBusy = true;
+  const job = cloudNext; cloudNext = null;
+  try {
+    const tok = await getIdToken();
+    const r = await fetch(cloudRecUrl(tok), {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ savedAt: job.stamp, email: cloudUser.email, data: job.s }),
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    saveNote.textContent = "✓ saved to cloud " + new Date().toLocaleTimeString();
+  } catch (e) {
+    if (!cloudNext) cloudNext = job;   // keep the newest pending state for retry
+    saveNote.textContent = "⚠ cloud save pending — kept on this device";
+    if (String(e && e.message) === "SESSION_EXPIRED") { cloudBusy = false; forceSignOut(); return; }
+  }
+  cloudBusy = false;
+  if (cloudNext) { clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 4000); }
+}
+window.addEventListener("online", () => { if (cloudNext) pushCloud(); });
+
+function updateUserUi() {
+  userBtn.textContent = cloudUser ? "👤 " + (cloudUser.email || "").split("@")[0] : "👤 Sign in";
+  userBtn.title = cloudUser
+    ? "Signed in as " + cloudUser.email + " — workspace syncs to the cloud; click for options"
+    : "Sign in to save your workspace to the cloud and open it from any device";
+}
+/* load the workspace belonging to the current sign-in state (from its local cache) */
+function switchWorkspace(msgPrefix) {
+  fileHandle = null; fileWriteQueued = null;
+  aiKeySession = null;                       // each person unlocks the AI key themselves
+  ws = null;
+  load();
+  lastState = JSON.stringify(ws);
+  undoStack.length = 0; redoStack.length = 0;
+  pendingId = null; pendingOrig = null; selectedId = null; floatingId = null; selEdge = null;
+  hideMenu(); closeEdgeBox();
+  fitView(); renderSidebar(); updateUndoButtons(); updateUserUi(); initFS();
+  setStatus(cloudUser
+    ? (msgPrefix || "") + cloudUser.email + " — your workspace syncs to the cloud and follows you to any device."
+    : (msgPrefix || "") + "using the local workspace on this device.");
+}
+/* settle anything half-done, then park the on-screen workspace in its own slot */
+function parkWorkspace() {
+  if (proposalMode) cancelProposal();
+  if (pendingId) resolvePending();
+  clearTimeout(saveTimer);
+  const s = JSON.stringify(ws);
+  try { localStorage.setItem(wsKey(), s); } catch (e) {}
+  return s;
+}
+/* after signing in: newest copy wins between the cloud and this device's cache */
+async function syncOnSignIn(created) {
+  setStatus("Fetching your workspace…");
+  let rec = null;
+  try { rec = await cloudFetch(); } catch (e) {}
+  if (rec && rec.data && (+rec.savedAt || 0) >= localStamp()) {
+    try { localStorage.setItem(wsKey(), rec.data); } catch (e) {}
+    setLocalStamp(+rec.savedAt || Date.now());
+    switchWorkspace("Welcome back, ");
+  } else {
+    switchWorkspace(created ? "Welcome, " : "Welcome back, ");
+    const t = Date.now();
+    setLocalStamp(t);
+    queueCloudSave(JSON.stringify(ws), t);
+  }
+}
+/* on page load while already signed in: pull newer cloud changes in the background */
+async function resumeCloudSession() {
+  if (!cloudUser || !cloudReady()) return;
+  try {
+    const rec = await cloudFetch();
+    const lt = localStamp();
+    if (rec && rec.data && (+rec.savedAt || 0) > lt && rec.data !== JSON.stringify(ws)) {
+      try { localStorage.setItem(wsKey(), rec.data); } catch (e) {}
+      setLocalStamp(+rec.savedAt);
+      switchWorkspace("Synced from the cloud — welcome back, ");
+    } else if (lt > ((rec && +rec.savedAt) || 0)) {
+      queueCloudSave(JSON.stringify(ws), lt);   // this device has offline edits — push them
+    }
+  } catch (e) {
+    if (String(e && e.message) === "SESSION_EXPIRED") {
+      alert("Your sign-in has expired — please sign in again.");
+      forceSignOut();
+    } else {
+      setStatus("Offline — working from the copy on this device; changes sync when you’re back online.");
+    }
+  }
+}
+function signOut() {
+  if (!cloudUser) return;
+  const s = parkWorkspace();
+  const t = Date.now();
+  setLocalStamp(t);
+  cloudNext = { s, stamp: t };               // best-effort final push before leaving
+  const done = () => {
+    cloudNext = null; clearTimeout(cloudTimer);
+    cloudUser = null;
+    try { localStorage.removeItem(AUTH_LS); } catch (e) {}
+    switchWorkspace("Signed out — ");
+  };
+  pushCloud().finally(done);
+}
+function forceSignOut() {
+  if (!cloudUser) return;
+  cloudNext = null; clearTimeout(cloudTimer);
+  cloudUser = null;
+  try { localStorage.removeItem(AUTH_LS); } catch (e) {}
+  switchWorkspace("Signed out — ");
+}
+/* manual "Sync now" from the 👤 menu */
+async function syncNow() {
+  clearTimeout(saveTimer);
+  setStatus("Syncing…");
+  try {
+    const rec = await cloudFetch();
+    const lt = localStamp();
+    if (rec && rec.data && (+rec.savedAt || 0) > lt && rec.data !== JSON.stringify(ws)) {
+      if (proposalMode) cancelProposal();
+      if (pendingId) resolvePending();
+      try { localStorage.setItem(wsKey(), rec.data); } catch (e) {}
+      setLocalStamp(+rec.savedAt);
+      switchWorkspace("Synced — ");
+    } else {
+      const t = Date.now();
+      setLocalStamp(t);
+      cloudNext = { s: JSON.stringify(ws), stamp: t };
+      await pushCloud();
+      setStatus("Synced — this device has the latest version.");
+    }
+  } catch (e) {
+    setStatus("Sync failed: " + ((e && e.message) || e));
+  }
+}
+
+const room = () => ws.rooms.find(r => r.id === ws.currentRoomId);
+const obj = id => ws.objects.find(o => o.id === id);
+const placedHere = () => ws.objects.filter(o => o.state === "placed" && o.roomId === ws.currentRoomId);
+const staged = () => ws.objects.filter(o => o.state === "staged");
+/* ---------- geometry ---------- */
+function corners(o, shrink) {
+  const s = shrink || 0;
+  const hw = Math.max(o.w / 2 - s, 0.01), hd = Math.max(o.d / 2 - s, 0.01);
+  const a = o.angle * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+  return [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([px,py]) =>
+    ({ x: o.x + px*ca - py*sa, y: o.y + px*sa + py*ca }));
+}
+function pointInPoly(p, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if ((a.y > p.y) !== (b.y > p.y) &&
+        p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+function segsIntersect(p1, p2, p3, p4) {
+  const d = (a,b,c) => (c.x-a.x)*(b.y-a.y) - (b.x-a.x)*(c.y-a.y);
+  const d1 = d(p3,p4,p1), d2 = d(p3,p4,p2), d3 = d(p1,p2,p3), d4 = d(p1,p2,p4);
+  return ((d1>0&&d2<0)||(d1<0&&d2>0)) && ((d3>0&&d4<0)||(d3<0&&d4>0));
+}
+function rectInPoly(cs, poly) {
+  for (const c of cs) if (!pointInPoly(c, poly)) return false;
+  for (let i = 0; i < 4; i++) {
+    const a = cs[i], b = cs[(i+1)%4];
+    for (let j = 0, k = poly.length - 1; j < poly.length; k = j++)
+      if (segsIntersect(a, b, poly[j], poly[k])) return false;
+  }
+  return true;
+}
+function rectsOverlap(c1, c2) {  // separating-axis test for two convex quads
+  for (const cs of [c1, c2]) {
+    for (let i = 0; i < 2; i++) {
+      const ax = cs[i+1].y - cs[i].y, ay = -(cs[i+1].x - cs[i].x);
+      let min1=Infinity,max1=-Infinity,min2=Infinity,max2=-Infinity;
+      for (const p of c1) { const v = p.x*ax + p.y*ay; min1=Math.min(min1,v); max1=Math.max(max1,v); }
+      for (const p of c2) { const v = p.x*ax + p.y*ay; min2=Math.min(min2,v); max2=Math.max(max2,v); }
+      if (max1 <= min2 || max2 <= min1) return false;
+    }
+  }
+  return true;
+}
+/* vertical clash: only when the volumes truly intersect. Zero-height objects
+   occupy a plane: they clash with each other at the same height, and with a
+   volume they sit strictly inside — resting exactly on top/under is fine. */
+function zClash(a, b) {
+  const a0 = a.elev, a1 = a.elev + a.h, b0 = b.elev, b1 = b.elev + b.h;
+  const flatA = a.h <= EPS, flatB = b.h <= EPS;
+  if (flatA && flatB) return Math.abs(a0 - b0) < EPS;
+  if (flatA) return a0 > b0 + EPS && a0 < b1 - EPS;
+  if (flatB) return b0 > a0 + EPS && b0 < a1 - EPS;
+  return a0 < b1 - EPS && b0 < a1 - EPS;
+}
+function fits(o) {
+  const r = room();
+  if (!r || r.poly.length < 3) return false;
+  if (o.elev < -EPS) return false;
+  if (r.height > 0 && o.elev + o.h > r.height + EPS) return false;
+  if (!rectInPoly(corners(o, EPS), r.poly)) return false;
+  const mine = corners(o, EPS);
+  for (const other of placedHere()) {
+    if (other.id === o.id) continue;
+    if (zClash(o, other) && rectsOverlap(mine, corners(other, EPS))) return false;
+  }
+  return true;
+}
+function polyCentroid(poly) {
+  let x = 0, y = 0;
+  for (const p of poly) { x += p.x; y += p.y; }
+  return { x: x / poly.length, y: y / poly.length };
+}
+function polyBBox(poly) {
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for (const p of poly) { minX=Math.min(minX,p.x); minY=Math.min(minY,p.y); maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y); }
+  return { minX, minY, maxX, maxY, w: maxX-minX, h: maxY-minY };
+}
+function objBBoxMin(o) {
+  const cs = corners(o, 0);
+  return { x: Math.min(...cs.map(c => c.x)), y: Math.min(...cs.map(c => c.y)) };
+}
+/* Ctrl-snap while moving: nudge the object so one of its bounding-box edges
+   aligns exactly with a nearby wall or another object's edge. Returns the
+   world coordinates of the matched guide lines (or nulls). "Close" is measured
+   in screen pixels so the feel is the same at any zoom. */
+function snapMoveEdges(o) {
+  const guides = { x: null, y: null };
+  if (!(view.s > 0)) return guides;
+  const tol = 8 / view.s;
+  const cs = corners(o, 0);
+  const me = { minX: Math.min(...cs.map(c => c.x)), maxX: Math.max(...cs.map(c => c.x)),
+               minY: Math.min(...cs.map(c => c.y)), maxY: Math.max(...cs.map(c => c.y)) };
+  const xs = [], ys = [];                        // candidate alignment lines
+  const r = room();
+  if (r) for (let i = 0; i < r.poly.length; i++) {
+    const a = r.poly[i], b = r.poly[(i + 1) % r.poly.length];
+    if (Math.abs(a.x - b.x) < 1) xs.push((a.x + b.x) / 2);   // vertical wall
+    if (Math.abs(a.y - b.y) < 1) ys.push((a.y + b.y) / 2);   // horizontal wall
+  }
+  for (const other of placedHere()) {
+    if (other.id === o.id) continue;
+    const oc = corners(other, 0);
+    xs.push(Math.min(...oc.map(c => c.x)), Math.max(...oc.map(c => c.x)));
+    ys.push(Math.min(...oc.map(c => c.y)), Math.max(...oc.map(c => c.y)));
+  }
+  let bestX = null;
+  for (const line of xs) for (const edge of [me.minX, me.maxX]) {
+    const diff = line - edge;
+    if (Math.abs(diff) <= tol && (!bestX || Math.abs(diff) < bestX.d))
+      bestX = { d: Math.abs(diff), shift: diff, line };
+  }
+  let bestY = null;
+  for (const line of ys) for (const edge of [me.minY, me.maxY]) {
+    const diff = line - edge;
+    if (Math.abs(diff) <= tol && (!bestY || Math.abs(diff) < bestY.d))
+      bestY = { d: Math.abs(diff), shift: diff, line };
+  }
+  if (bestX) { o.x = Math.round(o.x + bestX.shift); guides.x = bestX.line; }
+  if (bestY) { o.y = Math.round(o.y + bestY.shift); guides.y = bestY.line; }
+  return guides;
+}
+/* snap `cand` so the segment prev→cand lies at a multiple of 90° from baseAngle */
+function angleSnap(prev, cand, baseAngle) {
+  const dx = cand.x - prev.x, dy = cand.y - prev.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.01) return { x: prev.x, y: prev.y };
+  const rel = Math.atan2(dy, dx) - baseAngle;
+  const snapped = baseAngle + Math.round(rel / (Math.PI/2)) * (Math.PI/2);
+  return { x: Math.round(prev.x + len * Math.cos(snapped)),
+           y: Math.round(prev.y + len * Math.sin(snapped)) };
+}
+function distToSeg(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const l2 = dx*dx + dy*dy;
+  let t = l2 ? ((p.x-a.x)*dx + (p.y-a.y)*dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const qx = a.x + t*dx, qy = a.y + t*dy;
+  return { d: Math.hypot(p.x-qx, p.y-qy), t };
+}
+
+/* ---------- view transforms ---------- */
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const wrap = document.getElementById("canvasWrap");
+const stageWrap = document.getElementById("stageWrap");
+const stageCv = document.getElementById("stageCv");
+const sctx = stageCv.getContext("2d");
+
+function toScreen(p) { return { x: view.ox + p.x * view.s, y: view.oy + p.y * view.s }; }
+function toWorld(p)  { return { x: (p.x - view.ox) / view.s, y: (p.y - view.oy) / view.s }; }
+/* true once a drag's cursor (tracked in cv-relative coordinates, regardless of
+   which panel the drag started in) is over the room viewport itself */
+function overRoom(sp) { return sp.x >= 0 && sp.x <= wrap.clientWidth && sp.y >= 0 && sp.y <= wrap.clientHeight; }
+function obOff(z) { if (flatView) return { x: 0, y: 0 }; const k = z * OBF; return { x: OBL.x * k, y: OBL.y * k }; }
+function ceilPos(r, i) { const off = obOff((r.base || 0) + r.height); return { x: r.poly[i].x + off.x, y: r.poly[i].y + off.y }; }
+/* the floor plan is drawn lifted by the room's floor height (r.base) */
+function floorOff(r) { return obOff(r.base || 0); }
+function basePos(r, i) { const off = floorOff(r); return { x: r.poly[i].x + off.x, y: r.poly[i].y + off.y }; }
+/* objects are drawn lifted by floor + their own elevation */
+function objDrawOff(o) { const r = room(); return obOff(((r && r.base) || 0) + o.elev); }
+
+function fitView() {
+  const r = room();
+  const pts = (r && r.poly.length >= 2) ? r.poly : [{x:0,y:0},{x:400,y:300}];
+  const b = polyBBox(pts);
+  const w = Math.max(b.w, 50), h = Math.max(b.h, 50);
+  const cw = wrap.clientWidth, ch = wrap.clientHeight;
+  view.s = Math.min(cw / w, ch / h) * 0.74;
+  view.ox = (cw - w * view.s) / 2 - b.minX * view.s;
+  view.oy = (ch - h * view.s) / 2 - b.minY * view.s + 0.07 * ch;
+}
+
+/* ---------- pending / commit / cancel ---------- */
+function snapshot(o) {
+  return { state: o.state, roomId: o.roomId, x: o.x, y: o.y,
+           angle: o.angle, elev: o.elev, w: o.w, d: o.d, h: o.h, hasPose: o.hasPose };
+}
+function ensurePending(o) {
+  if (pendingId === o.id) return;
+  if (pendingId) resolvePending();       // commit the other object if green, else revert it
+  pendingId = o.id;
+  pendingOrig = snapshot(o);
+}
+function commitPending() {
+  const o = obj(pendingId);
+  if (o) o.hasPose = true;
+  pendingId = null; pendingOrig = null; floatingId = null;
+  save(); renderSidebar();
+}
+function cancelPending() {
+  const o = obj(pendingId);
+  if (o && pendingOrig) {
+    Object.assign(o, pendingOrig);
+    if (o.state === "staged") { o.roomId = null; if (selectedId === o.id) selectedId = null; }
+  }
+  pendingId = null; pendingOrig = null; floatingId = null;
+  save(); renderSidebar();
+}
+/* settle the current tentative object without losing anything else */
+function resolvePending() {
+  const o = obj(pendingId);
+  if (o && fits(o)) commitPending();
+  else cancelPending();
+}
+
+/* ---------- object actions ---------- */
+function lockBlocked(o) {
+  if (o && o.locked) {
+    setStatus("🔒 “" + o.name + "” is locked — press L or untick Locked to change it.");
+    return true;
+  }
+  return false;
+}
+function toggleLock(id) {
+  const o = obj(id);
+  if (!o) return;
+  if (pendingId === o.id) resolvePending();
+  o.locked = !o.locked;
+  save(); renderSidebar();
+  setStatus(o.locked ? "🔒 “" + o.name + "” locked in place." : "“" + o.name + "” unlocked.");
+}
+function setPriority(id, p) {
+  const o = obj(id);
+  if (!o) return;
+  o.priority = Math.min(Math.max(Math.round(p) || 5, 1), 10);
+  save(); renderSidebar();
+  setStatus("“" + o.name + "” priority " + o.priority + "/10.");
+}
+function addObject() {
+  const name = objName.value.trim() || "Object";
+  const w = Math.max(Math.round(fromU(objW.value)) || 50, 1), d = Math.max(Math.round(fromU(objD.value)) || 50, 1);
+  const r = room();
+  const hIn = fromU(objH.value);   // height optional: blank = half the room height
+  const h = isFinite(hIn) ? Math.max(Math.round(hIn), 0)
+          : Math.max(Math.round(((r && r.height) || 250) / 2), 0);
+  const o = { id: uid(), name, w, d, h, color: objColor.value,
+              state: "staged", roomId: null, x: 0, y: 0, angle: 0, elev: 0,
+              hasPose: false, locked: false, priority: 5 };
+  ws.objects.push(o);
+  objName.value = "";
+  selectedId = o.id;
+  save(); renderSidebar();
+  setStatus("“" + name + "” added to the staging shelf — drag it into the room.");
+}
+function placeFromStaging(id, dropX, dropY) {
+  const o = obj(id), r = room();
+  if (!o || !r || lockBlocked(o)) return;
+  if (r.poly.length < 3) { setStatus("Draw or size the room outline first."); return; }
+  if (mode !== "select") setMode("select");
+  if (pendingId) resolvePending();
+  pendingId = o.id;
+  pendingOrig = snapshot(o);
+  pendingOrig.state = "staged"; pendingOrig.roomId = null;
+  o.state = "placed"; o.roomId = r.id;
+  if (dropX != null) { o.x = Math.round(dropX); o.y = Math.round(dropY); }
+  else if (!o.hasPose) {   // never been placed: start at the room centre
+    const c = polyCentroid(r.poly);
+    o.x = Math.round(c.x); o.y = Math.round(c.y); o.elev = 0;
+  }                        // otherwise keep its previous position/rotation/height
+  selectedId = o.id;
+  renderSidebar();
+  setStatus("Click the object while green to confirm. Esc cancels.");
+}
+function removeToStaging(id) {
+  const o = obj(id);
+  if (!o || lockBlocked(o)) return;
+  if (pendingId === o.id && pendingOrig) Object.assign(o, pendingOrig); // keep last confirmed pose
+  pendingId = null; pendingOrig = null; floatingId = null;
+  o.state = "staged"; o.roomId = null;   // position/rotation/height kept for next time
+  save(); renderSidebar();
+}
+function deleteForever(id) {
+  const o = obj(id);
+  if (!o) return;
+  if (o.locked) { setStatus("🔒 “" + o.name + "” is locked — unlock it before deleting."); return; }
+  if (!confirm(`Delete “${o.name}” permanently?`)) return;
+  if (pendingId === id) { pendingId = null; pendingOrig = null; floatingId = null; }
+  if (selectedId === id) selectedId = null;
+  ws.objects = ws.objects.filter(x => x.id !== id);
+  save(); renderSidebar();
+}
+function duplicateObject(id) {
+  const o = obj(id);
+  if (!o) return;
+  if (pendingId) resolvePending();
+  const copy = { ...o, id: uid(), name: o.name + " copy", locked: false };
+  ws.objects.push(copy);
+  selectedId = copy.id;
+  if (o.state === "placed") {
+    copy.x += 20; copy.y += 20;
+    pendingId = copy.id;
+    pendingOrig = snapshot(copy);
+    pendingOrig.state = "staged"; pendingOrig.roomId = null;
+    setStatus("Copy created — click it while green to confirm.");
+  } else setStatus("Copy added to staging.");
+  save(); renderSidebar();
+}
+function renameObject(id) {
+  const o = obj(id);
+  if (!o) return;
+  const n = prompt("Rename object:", o.name);
+  if (n !== null && n.trim()) { o.name = n.trim(); save(); renderSidebar(); }
+}
+function selectedPlaced() {
+  const o = obj(pendingId || selectedId);
+  return (o && o.state === "placed" && o.roomId === ws.currentRoomId) ? o : null;
+}
+function rotateBy(deg) {
+  const o = selectedPlaced();
+  if (!o) { setStatus("Select a placed object first."); return; }
+  if (lockBlocked(o)) return;
+  ensurePending(o);
+  o.angle = ((o.angle + deg) % 360 + 360) % 360;
+}
+function rotateTo(deg) {
+  const o = selectedPlaced();
+  if (!o) { setStatus("Select a placed object first."); return; }
+  if (lockBlocked(o)) return;
+  ensurePending(o);
+  o.angle = ((deg % 360) + 360) % 360;
+}
+/* typed property edit: apply, auto-commit when it fits, stay red otherwise */
+function applyProp(fn) {
+  const o = selectedPlaced();
+  if (!o || lockBlocked(o)) return;
+  ensurePending(o);
+  fn(o);
+  if (fits(o)) { commitPending(); setStatus(""); }
+  else { setStatus("Doesn’t fit (red) — adjust it, or press Esc to revert."); renderSidebar(); }
+}
+/* ---------- room actions ---------- */
+function newRoom() {
+  const name = prompt("Room name:", "Room " + (ws.rooms.length + 1));
+  if (name === null) return;
+  const r = defaultRoom(name.trim() || undefined);
+  const w = prompt("Room width in " + unitLbl() + " (blank = draw the outline yourself):", String(toU(400)));
+  if (w === null) return;
+  if (w.trim() === "") {
+    r.poly = [];
+  } else {
+    const d = prompt("Room depth in " + unitLbl() + ":", String(toU(300)));
+    if (d === null) return;
+    const wv = Math.max(Math.round(fromU(w)) || 400, 10), dv = Math.max(Math.round(fromU(d)) || 300, 10);
+    r.poly = [{x:0,y:0},{x:wv,y:0},{x:wv,y:dv},{x:0,y:dv}];
+  }
+  ws.rooms.push(r);
+  switchRoom(r.id);
+  if (!r.poly.length) setMode("draw");
+  save();
+}
+function switchRoom(id) {
+  if (pendingId) resolvePending();
+  selectedId = null; selEdge = null; hideMenu(); closeEdgeBox();
+  ws.currentRoomId = id;
+  fitView();
+  save(); renderSidebar();
+}
+function deleteRoom() {
+  const r = room();
+  if (!r) return;
+  if (!confirm(`Delete room “${r.name}”? Its objects go back to staging.`)) return;
+  if (pendingId) cancelPending();
+  for (const o of ws.objects) if (o.roomId === r.id) { o.state = "staged"; o.roomId = null; }
+  ws.rooms = ws.rooms.filter(x => x.id !== r.id);
+  if (!ws.rooms.length) ws.rooms.push(defaultRoom());
+  ws.currentRoomId = ws.rooms[0].id;
+  selectedId = null; selEdge = null;
+  fitView(); save(); renderSidebar();
+}
+/* typed room width/depth: scale the outline to the new bounding-box size */
+function setRoomDim(axis, val) {
+  const r = room();
+  if (!r) return;
+  val = Math.max(Math.round(val) || 0, 10);
+  if (r.poly.length < 3) {
+    const w = axis === "x" ? val : Math.max(+roomW.value || 400, 10);
+    const d = axis === "y" ? val : Math.max(+roomD.value || 300, 10);
+    r.poly = [{x:0,y:0},{x:w,y:0},{x:w,y:d},{x:0,y:d}];
+  } else {
+    const b = polyBBox(r.poly);
+    const old = axis === "x" ? b.w : b.h, min = axis === "x" ? b.minX : b.minY;
+    if (old < 1) return;
+    for (const p of r.poly) p[axis] = Math.round(min + (p[axis] - min) * (val / old));
+  }
+  save(); renderSidebar();
+}
+function setFloorVertex(r, i, pt) { r.poly[i] = pt; }
+/* snapshot/restore of the room geometry a drag can touch (for Esc-cancel) */
+function roomGeomSnap(r) { return JSON.stringify({ poly: r.poly, height: r.height, base: r.base || 0 }); }
+function restoreRoomGeom(r, s) { const g = JSON.parse(s); r.poly = g.poly; r.height = g.height; r.base = g.base; }
+function insertRoomPoint(i, t) {
+  const r = room();
+  const n = r.poly.length;
+  const lerp = (a, b) => ({ x: Math.round(a.x + (b.x-a.x)*t), y: Math.round(a.y + (b.y-a.y)*t) });
+  r.poly.splice(i+1, 0, lerp(r.poly[i], r.poly[(i+1)%n]));
+  save(); renderSidebar();
+  setStatus("Corner added — drag it into place.");
+}
+function removeRoomPoint(i) {
+  const r = room();
+  if (r.poly.length <= 3) { setStatus("A room needs at least 3 corners."); return; }
+  r.poly.splice(i, 1);
+  save(); renderSidebar();
+}
+function setRoomEdgeLength(i, L) {
+  const r = room();
+  const n = r.poly.length, j = (i+1) % n;
+  const a = r.poly[i], b = r.poly[j];
+  const len = Math.hypot(b.x-a.x, b.y-a.y);
+  if (len < 0.01) return;
+  r.poly[j] = { x: Math.round(a.x + (b.x-a.x)/len * L), y: Math.round(a.y + (b.y-a.y)/len * L) };
+  save(); renderSidebar();
+}
+function setObjEdgeLength(id, i, L) {
+  const o = obj(id);
+  if (!o) return;
+  L = Math.max(Math.round(L), 1);
+  const N = [[0,-1],[1,0],[0,1],[-1,0]][i];       // outward normal, local
+  const old = i % 2 === 0 ? o.w : o.d;
+  const th = o.angle * Math.PI / 180, c = Math.cos(th), s = Math.sin(th);
+  const nx = N[0]*c - N[1]*s, ny = N[0]*s + N[1]*c;
+  const set = ob => {
+    if (i % 2 === 0) ob.w = L; else ob.d = L;      // opposite side stays put
+    ob.x = Math.round(ob.x + nx * (L-old) / 2);
+    ob.y = Math.round(ob.y + ny * (L-old) / 2);
+  };
+  if (o.state === "placed") applyProp(set);
+  else { set(o); save(); renderSidebar(); }
+}
+
+/* ---------- blueprint ---------- */
+function getBpImage(r) {
+  if (!r.blueprint) return null;
+  let img = imgCache[r.id];
+  if (!img || img._src !== r.blueprint.data) {
+    img = new Image();
+    img._src = r.blueprint.data;
+    img.src = r.blueprint.data;
+    imgCache[r.id] = img;
+  }
+  return img.complete && img.naturalWidth ? img : null;
+}
+
+/* ---------- mode / status ---------- */
+function setMode(m) {
+  if (mode === "draw" && m !== "draw") drawPts = [];
+  mode = m; calPts = []; selEdge = null; hideMenu(); closeEdgeBox();
+  modeSelect.classList.toggle("active", m === "select");
+  modeDraw.classList.toggle("active", m === "draw");
+  bpCalBtn.classList.toggle("active", m === "calibrate");
+  if (m === "draw") {
+    const r = room();
+    drawPts = [];
+    setStatus((r && r.poly.length ? "Drawing replaces the current outline. " : "") +
+              "Click corners (Ctrl snaps to right angles); click the first corner or press Enter to close. Esc cancels.");
+  } else if (m === "calibrate") {
+    setStatus("Click two points on the blueprint whose real distance you know.");
+  } else setStatus("");
+}
+function setStatus(t) { statusMsg.textContent = t; statusMsg.title = t; }
+
+/* ---------- hit testing ---------- */
+function hitObject(wp) {
+  let best = null;
+  for (const o of placedHere()) {
+    const off = objDrawOff(o);   // objects are drawn (and hit) at their elevation
+    const a = -o.angle * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+    const dx = wp.x - off.x - o.x, dy = wp.y - off.y - o.y;
+    const lx = dx*ca - dy*sa, ly = dx*sa + dy*ca;
+    if (Math.abs(lx) <= o.w/2 && Math.abs(ly) <= o.d/2) {
+      if (!best || o.id === pendingId ||
+          (best.id !== pendingId && o.elev >= best.elev)) best = o;   // topmost wins
+    }
+  }
+  return best;
+}
+function nearestObjEdge(o, wp, maxDistCm) {
+  const off = objDrawOff(o);
+  const a = -o.angle * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+  const dx = wp.x - off.x - o.x, dy = wp.y - off.y - o.y;
+  const lx = dx*ca - dy*sa, ly = dx*sa + dy*ca;
+  const dists = [Math.abs(ly + o.d/2), Math.abs(lx - o.w/2), Math.abs(ly - o.d/2), Math.abs(lx + o.w/2)];
+  let bi = 0;
+  for (let i = 1; i < 4; i++) if (dists[i] < dists[bi]) bi = i;
+  if (maxDistCm != null && dists[bi] > maxDistCm) return -1;
+  return bi;
+}
+function objHandleAt(sp) {
+  const o = selectedPlaced();
+  if (!o) return null;
+  const cs = corners(o, 0), off = objDrawOff(o);
+  for (let i = 0; i < 4; i++) {
+    const s = toScreen({ x: cs[i].x + off.x, y: cs[i].y + off.y });
+    if (Math.hypot(s.x - sp.x, s.y - sp.y) < 9) return { o, i };
+  }
+  return null;
+}
+function roomVertexAt(sp) {
+  const r = room();
+  if (!r) return -1;
+  for (let i = 0; i < r.poly.length; i++) {
+    const s = toScreen(basePos(r, i));
+    if (Math.hypot(s.x - sp.x, s.y - sp.y) < 9) return i;
+  }
+  return -1;
+}
+/* nearest room edge to a screen point: {layer, i, t} or null
+   (a "ceil" hit is the same wall, clicked at ceiling height) */
+function roomEdgeAt(sp, maxPx) {
+  const r = room();
+  if (!r || r.poly.length < 3) return null;
+  let best = null;
+  const check = (layer, pts) => {
+    for (let i = 0; i < pts.length; i++) {
+      const a = toScreen(pts[i]), b = toScreen(pts[(i+1)%pts.length]);
+      const res = distToSeg(sp, a, b);
+      if (res.d < maxPx && (!best || res.d < best.d)) best = { layer, i, t: res.t, d: res.d };
+    }
+  };
+  check("floor", r.poly.map((_, i) => basePos(r, i)));
+  if (r.height > 0) check("ceil", r.poly.map((_, i) => ceilPos(r, i)));
+  return best;
+}
+/* Alt+Shift vertical-surface pick. Precedence: object over room; among stacked
+   horizontal surfaces, the lowest one (an object's bottom before its top;
+   the room floor before the ceiling). */
+function findVerticalSurface(wp) {
+  const o = hitObject(wp);              // inside a footprint = its bottom face
+  if (o) return { kind: "objBottom", id: o.id };
+  let bestTop = null;                   // else maybe inside a drawn top face
+  const rb = (room() && room().base) || 0;
+  for (const po of placedHere()) {
+    if (po.h <= 0) continue;
+    const off = obOff(rb + po.elev + po.h);
+    const cs = corners(po, 0).map(p => ({ x: p.x + off.x, y: p.y + off.y }));
+    if (pointInPoly(wp, cs)) {
+      if (!bestTop || po.elev + po.h < bestTop.elev + bestTop.h) bestTop = po;
+    }
+  }
+  if (bestTop) return { kind: "objTop", id: bestTop.id };
+  const r = room();
+  if (r && r.poly.length >= 3) {
+    const fo = floorOff(r);
+    if (pointInPoly({ x: wp.x - fo.x, y: wp.y - fo.y }, r.poly)) return { kind: "roomFloor" };
+    if (r.height > 0 && pointInPoly(wp, r.poly.map((_, i) => ceilPos(r, i)))) return { kind: "roomCeil" };
+  }
+  return null;
+}
+/* screen movement projected onto the 45° height axis, in cm of height */
+function screenToDz(dxp, dyp) {
+  return (dxp * OBL.x + dyp * OBL.y) / (OBF * view.s);
+}
+function hitStaging(sp) {
+  for (const s of stagingSlots)
+    if (sp.x >= s.x && sp.x <= s.x + s.w && sp.y >= s.y && sp.y <= s.y + s.h) return s.id;
+  return null;
+}
+function evPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function evPosStage(e) {
+  const r = stageCv.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+/* ---------- floating UI (context menu / edge box) ---------- */
+const ctxMenu = document.getElementById("ctxMenu");
+const edgeBox = document.getElementById("edgeBox");
+function showMenu(sp, items) {
+  ctxMenu.innerHTML = "";
+  for (const it of items) {
+    const b = document.createElement("button");
+    b.textContent = it.label;
+    if (it.danger) b.className = "danger";
+    b.onclick = () => { hideMenu(); it.fn(); };
+    ctxMenu.appendChild(b);
+  }
+  ctxMenu.style.display = "block";
+  ctxMenu.style.left = Math.max(0, Math.min(sp.x, window.innerWidth - 170)) + "px";
+  ctxMenu.style.top = Math.max(0, Math.min(sp.y, window.innerHeight - items.length*34 - 10)) + "px";
+}
+function hideMenu() { ctxMenu.style.display = "none"; menuVertex = null; }
+function edgeInfo(sel) {   // {a,b} screen endpoints + current length
+  if (sel.kind === "obj") {
+    const o = obj(sel.id);
+    if (!o) return null;
+    const cs = corners(o, 0), off = objDrawOff(o);
+    const lift = p => ({ x: p.x + off.x, y: p.y + off.y });
+    return { a: toScreen(lift(cs[sel.i])), b: toScreen(lift(cs[(sel.i+1)%4])),
+             len: sel.i % 2 === 0 ? o.w : o.d };
+  }
+  const r = room();
+  if (!r || r.poly.length < 3) return null;
+  const pts = sel.layer === "ceil" ? r.poly.map((_, i) => ceilPos(r, i)) : r.poly.map((_, i) => basePos(r, i));
+  const j = (sel.i+1) % r.poly.length;
+  return { a: toScreen(pts[sel.i]), b: toScreen(pts[j]),
+           len: Math.round(Math.hypot(r.poly[j].x - r.poly[sel.i].x, r.poly[j].y - r.poly[sel.i].y)) };
+}
+function openEdgeBox(sel) {
+  const info = edgeInfo(sel);
+  if (!info) return;
+  selEdge = sel;
+  edgeLen.value = toU(info.len);
+  edgeBox.style.display = "flex";
+  edgeBox.style.left = Math.max(0, Math.min((info.a.x + info.b.x)/2 - 70, wrap.clientWidth - 190)) + "px";
+  edgeBox.style.top = Math.max(0, Math.min((info.a.y + info.b.y)/2 + 12, wrap.clientHeight - 46)) + "px";
+  edgeLen.focus(); edgeLen.select();
+}
+function closeEdgeBox() { edgeBox.style.display = "none"; selEdge = null; }
+function applyEdgeLength() {
+  if (!selEdge) return;
+  const L = Math.round(fromU(edgeLen.value));
+  if (!(L > 0)) return;
+  if (selEdge.kind === "obj") setObjEdgeLength(selEdge.id, selEdge.i, L);
+  else setRoomEdgeLength(selEdge.i, L);
+  closeEdgeBox();
+}
+document.addEventListener("mousedown", e => {
+  if (ctxMenu.style.display !== "none" && !ctxMenu.contains(e.target)) hideMenu();
+  if (edgeBox.style.display !== "none" && !edgeBox.contains(e.target) && e.target !== cv) closeEdgeBox();
+});
+/* ---------- mouse ---------- */
+cv.addEventListener("mousedown", e => {
+  const sp = evPos(e), wp = toWorld(sp);
+  closeEdgeBox(); hideMenu();
+  if (e.button === 1 || (e.button === 0 && spaceHeld)) {
+    drag = { type: "pan", lastX: sp.x, lastY: sp.y };
+    e.preventDefault();
+    return;
+  }
+  if (e.button === 2) return; // handled in contextmenu
+
+  /* a floating ("Reposition") object lands where it is; the click can then confirm it */
+  if (floatingId) {
+    const fo = obj(floatingId);
+    floatingId = null;
+    if (fo) {
+      drag = { type: "move", id: fo.id, offX: fo.x - wp.x, offY: fo.y - wp.y,
+               moved: false, startX: sp.x, startY: sp.y, wasSelected: true, cur: sp };
+      return;
+    }
+  }
+
+  if (mode === "draw") {
+    const vi = hitDrawVertex(sp);
+    if (vi === 0 && drawPts.length >= 3) { finishDraw(); return; }
+    if (vi >= 0) { drag = { type: "vertex", i: vi, v0: {...drawPts[vi]} }; return; }
+    let p = { x: Math.round(wp.x), y: Math.round(wp.y) };
+    if (e.ctrlKey && drawPts.length) {
+      const last = drawPts[drawPts.length - 1];
+      let base = 0;
+      if (drawPts.length >= 2) {
+        const prev = drawPts[drawPts.length - 2];
+        base = Math.atan2(last.y - prev.y, last.x - prev.x);
+      }
+      p = angleSnap(last, p, base);
+    }
+    drawPts.push(p);
+    return;
+  }
+  if (mode === "calibrate") {
+    calPts.push(wp);
+    if (calPts.length === 2) finishCalibration();
+    return;
+  }
+
+  /* select mode. Alt+Shift+drag = move a horizontal surface up/down (height axis) */
+  if (e.shiftKey && e.altKey) {
+    const t = findVerticalSurface(wp);
+    if (t) {
+      const r = room();
+      if (t.kind === "objBottom" || t.kind === "objTop") {
+        const o = obj(t.id);
+        if (o.locked) { selectedId = o.id; renderSidebar(); lockBlocked(o); return; }
+        selectedId = o.id; renderSidebar();
+        drag = { type: "vsurf", kind: t.kind, id: t.id, lastSp: sp, acc: 0,
+                 elev0: o.elev, h0: o.h, startX: sp.x, startY: sp.y, moved: false };
+      } else {
+        drag = { type: "vsurf", kind: t.kind, lastSp: sp, acc: 0, geom: roomGeomSnap(r),
+                 hgt0: r.height, base0: r.base || 0, startX: sp.x, startY: sp.y, moved: false };
+      }
+    }
+    return;
+  }
+
+  /* Shift+drag = push a surface sideways (object side or room wall) */
+  if (e.shiftKey) {
+    const oHit = hitObject(wp);
+    if (oHit) {
+      if (oHit.locked) { selectedId = oHit.id; renderSidebar(); lockBlocked(oHit); return; }
+      const ei = nearestObjEdge(oHit, wp, null);
+      const N = [[0,-1],[1,0],[0,1],[-1,0]][ei];
+      const th = oHit.angle * Math.PI / 180, c = Math.cos(th), s = Math.sin(th);
+      selectedId = oHit.id;
+      drag = { type: "faceDrag", id: oHit.id, even: ei % 2 === 0,
+               nx: N[0]*c - N[1]*s, ny: N[0]*s + N[1]*c,
+               sm: wp, w0: oHit.w, d0: oHit.d, x0: oHit.x, y0: oHit.y,
+               startX: sp.x, startY: sp.y, moved: false };
+      renderSidebar();
+      return;
+    }
+    const re = roomEdgeAt(sp, 9);
+    if (re) {
+      const r = room(), n = r.poly.length, j = (re.i+1) % n;
+      drag = { type: "wallDrag", i: re.i, j, sm: wp, geom: roomGeomSnap(r),
+               p0: {...r.poly[re.i]}, p1: {...r.poly[j]},
+               startX: sp.x, startY: sp.y, moved: false };
+      return;
+    }
+    return;
+  }
+
+  const h = objHandleAt(sp);
+  if (h) {
+    if (h.o.locked) { lockBlocked(h.o); return; }
+    const SX = [-1,1,1,-1], SY = [-1,-1,1,1];
+    drag = { type: "resize", id: h.o.id, sx: SX[h.i], sy: SY[h.i],
+             opp: corners(h.o, 0)[(h.i+2)%4],
+             startX: sp.x, startY: sp.y, moved: false };
+    return;
+  }
+  const vi = roomVertexAt(sp);
+  if (vi >= 0) {
+    const r = room(), n = r.poly.length;
+    const pi = (vi-1+n)%n, ni = (vi+1)%n, v = r.poly[vi];
+    drag = { type: "roomVertex", i: vi, pi, ni, geom: roomGeomSnap(r),
+             prevHoriz: Math.abs(v.x - r.poly[pi].x) >= Math.abs(v.y - r.poly[pi].y),
+             nextHoriz: Math.abs(v.x - r.poly[ni].x) >= Math.abs(v.y - r.poly[ni].y),
+             startX: sp.x, startY: sp.y, moved: false };
+    return;
+  }
+  const hit = hitObject(wp);
+  if (hit) {
+    const wasSelected = selectedId === hit.id;
+    selectedId = hit.id;
+    if (hit.locked) { renderSidebar(); setStatus("🔒 “" + hit.name + "” is locked (L to unlock)."); return; }
+    drag = { type: "move", id: hit.id, offX: hit.x - wp.x, offY: hit.y - wp.y,
+             moved: false, startX: sp.x, startY: sp.y, wasSelected, cur: sp,
+             lastSp: sp, elevF: hit.elev };
+  } else {
+    const re = roomEdgeAt(sp, 7);
+    if (re) drag = { type: "edgeClick", sel: { kind: "room", layer: re.layer, i: re.i },
+                     startX: sp.x, startY: sp.y, moved: false };
+    else drag = { type: "maybeDeselect", startX: sp.x, startY: sp.y, moved: false };
+  }
+  renderSidebar();
+});
+
+/* the staging shelf lives in its own canvas/panel, dockable anywhere on screen;
+   drag bookkeeping (startX/Y, cur) stays in cv-relative coordinates throughout
+   the drag so it stays comparable once the cursor crosses onto the room canvas */
+stageCv.addEventListener("mousedown", e => {
+  if (e.button !== 0) return;
+  closeEdgeBox(); hideMenu();
+  const sid = hitStaging(evPosStage(e));
+  if (mode !== "select") setMode("select");
+  if (!sid) { selectedId = null; renderSidebar(); return; }
+  selectedId = sid;
+  const so = obj(sid);
+  if (so && so.locked) { setStatus("🔒 “" + so.name + "” is locked in staging (L to unlock)."); renderSidebar(); return; }
+  const cvSp = evPos(e);
+  drag = { type: "stageDrag", id: sid, startX: cvSp.x, startY: cvSp.y, moved: false, cur: cvSp };
+  renderSidebar();
+});
+
+window.addEventListener("mousemove", e => {
+  const sp = evPos(e);
+  mouseWorld = toWorld(sp);
+  if (floatingId && !drag) {
+    const o = obj(floatingId);
+    if (o) {   // keep the drawn object under the cursor even when it's elevated
+      const off = objDrawOff(o);
+      o.x = Math.round(mouseWorld.x - off.x); o.y = Math.round(mouseWorld.y - off.y);
+    }
+    return;
+  }
+  if (!drag) return;
+  drag.cur = sp;
+  if (drag.startX !== undefined &&
+      Math.hypot(sp.x - drag.startX, sp.y - drag.startY) > 3) drag.moved = true;
+
+  if (drag.type === "stageDrag") {
+    /* while over the room, draw() shows a placement preview on the room canvas;
+       otherwise a small screen-space ghost (not tied to either canvas) follows the cursor */
+    const o = obj(drag.id);
+    if (o && drag.moved) updateStageDragGhost(o, e.clientX, e.clientY, !overRoom(sp));
+  } else if (drag.type === "pan") {
+    view.ox += sp.x - drag.lastX; view.oy += sp.y - drag.lastY;
+    drag.lastX = sp.x; drag.lastY = sp.y;
+  } else if (drag.type === "vertex") {
+    drawPts[drag.i] = { x: Math.round(mouseWorld.x), y: Math.round(mouseWorld.y) };
+  } else if (drag.type === "move") {
+    const o = obj(drag.id);
+    if (!o) { drag = null; return; }
+    if (!drag.moved) { drag.lastSp = sp; return; }
+    ensurePending(o);
+    if (e.altKey) {          // Alt: drag up/right = raise, down/left = lower
+      drag.elevF += screenToDz(sp.x - drag.lastSp.x, sp.y - drag.lastSp.y);
+      drag.elevF = Math.max(drag.elevF, 0);
+      o.elev = Math.round(drag.elevF);
+      drag.wasAlt = true;
+    } else {
+      if (drag.wasAlt) {     // returning from Alt: re-anchor so the object doesn't jump
+        drag.offX = o.x - mouseWorld.x; drag.offY = o.y - mouseWorld.y;
+        drag.wasAlt = false;
+      }
+      o.x = Math.round(mouseWorld.x + drag.offX);
+      o.y = Math.round(mouseWorld.y + drag.offY);
+      moveGuides = e.ctrlKey ? snapMoveEdges(o) : null;   // Ctrl: align edges to nearby walls/objects
+    }
+    drag.lastSp = sp;
+  } else if (drag.type === "vsurf") {
+    if (!drag.moved) { drag.lastSp = sp; return; }
+    drag.acc += screenToDz(sp.x - drag.lastSp.x, sp.y - drag.lastSp.y);
+    drag.lastSp = sp;
+    if (drag.kind === "objBottom") {
+      const o = obj(drag.id);
+      if (!o) { drag = null; return; }
+      ensurePending(o);
+      /* the bottom face moves; the top face stays where it was */
+      const top = drag.elev0 + drag.h0;
+      const ne = Math.min(Math.max(Math.round(drag.elev0 + drag.acc), 0), top);
+      o.elev = ne; o.h = top - ne;
+    } else if (drag.kind === "objTop") {
+      const o = obj(drag.id);
+      if (!o) { drag = null; return; }
+      ensurePending(o);
+      o.h = Math.max(Math.round(drag.h0 + drag.acc), 0);
+    } else {
+      const r = room();
+      if (drag.kind === "roomCeil") {
+        r.height = Math.min(Math.max(Math.round(drag.hgt0 + drag.acc), 0), 2000);
+      } else {
+        /* the floor itself rises/falls; the ceiling stays where it was */
+        const nb = Math.min(Math.max(Math.round(drag.base0 + drag.acc), 0), drag.base0 + drag.hgt0);
+        r.base = nb;
+        r.height = drag.base0 + drag.hgt0 - nb;
+      }
+      drag.changed = true;
+    }
+  } else if (drag.type === "resize") {
+    const o = obj(drag.id);
+    if (!o) { drag = null; return; }
+    if (!drag.moved) return;
+    ensurePending(o);
+    const oOff = objDrawOff(o);   // handles are drawn at the object's elevation
+    const th = o.angle * Math.PI / 180, c = Math.cos(th), s = Math.sin(th);
+    const dx = mouseWorld.x - oOff.x - drag.opp.x, dy = mouseWorld.y - oOff.y - drag.opp.y;
+    o.w = Math.max(Math.round((dx*c + dy*s) * drag.sx), 1);
+    o.d = Math.max(Math.round((-dx*s + dy*c) * drag.sy), 1);
+    const lx = drag.sx * o.w / 2, ly = drag.sy * o.d / 2;
+    o.x = Math.round(drag.opp.x + lx*c - ly*s);
+    o.y = Math.round(drag.opp.y + lx*s + ly*c);
+  } else if (drag.type === "faceDrag") {
+    const o = obj(drag.id);
+    if (!o) { drag = null; return; }
+    if (!drag.moved) return;
+    ensurePending(o);
+    const t = (mouseWorld.x - drag.sm.x)*drag.nx + (mouseWorld.y - drag.sm.y)*drag.ny;
+    /* pushing a face changes the dimension PERPENDICULAR to it:
+       top/bottom faces (even) change depth, left/right faces change width */
+    const dim0 = drag.even ? drag.d0 : drag.w0;
+    const nd = Math.max(Math.round(dim0 + t), 1);
+    const eff = nd - dim0;
+    if (drag.even) o.d = nd; else o.w = nd;
+    o.x = Math.round(drag.x0 + drag.nx * eff / 2);
+    o.y = Math.round(drag.y0 + drag.ny * eff / 2);
+  } else if (drag.type === "wallDrag") {
+    if (!drag.moved) return;
+    const r = room();
+    let dx = Math.round(mouseWorld.x - drag.sm.x), dy = Math.round(mouseWorld.y - drag.sm.y);
+    if (e.ctrlKey) {   // Ctrl: move along one axis only (the dominant one)
+      if (Math.abs(dx) >= Math.abs(dy)) dy = 0; else dx = 0;
+    }
+    r.poly[drag.i] = { x: drag.p0.x + dx, y: drag.p0.y + dy };
+    r.poly[drag.j] = { x: drag.p1.x + dx, y: drag.p1.y + dy };
+    drag.changed = true;
+  } else if (drag.type === "roomVertex") {
+    if (!drag.moved) return;
+    const r = room();
+    const fo = floorOff(r);
+    const v = { x: Math.round(mouseWorld.x - fo.x), y: Math.round(mouseWorld.y - fo.y) };
+    setFloorVertex(r, drag.i, v);
+    if (e.ctrlKey) {   // keep the corner square: adjacent walls keep their orientation
+      const p = r.poly[drag.pi], n = r.poly[drag.ni];
+      setFloorVertex(r, drag.pi, drag.prevHoriz ? { x: p.x, y: v.y } : { x: v.x, y: p.y });
+      setFloorVertex(r, drag.ni, drag.nextHoriz ? { x: n.x, y: v.y } : { x: v.x, y: n.y });
+    }
+    drag.changed = true;
+  }
+});
+
+window.addEventListener("mouseup", e => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  moveGuides = null;
+  const sp = evPos(e);
+
+  if (d.type === "stageDrag") {
+    updateStageDragGhost(null, 0, 0, false);
+    if (d.moved && overRoom(sp)) {
+      const wp = toWorld(sp), o = obj(d.id);
+      const off = o ? objDrawOff(o) : { x: 0, y: 0 };   // drop where the ghost is drawn
+      placeFromStaging(d.id, wp.x - off.x, wp.y - off.y);
+    }
+    return;
+  }
+  if (d.type === "move") {
+    const o = obj(d.id);
+    if (!o) return;
+    if (!d.moved) {
+      if (o.id === pendingId) {
+        if (fits(o)) { commitPending(); setStatus("Placed ✓"); }
+        else setStatus("Doesn’t fit here (red) — move it, or press Esc to cancel.");
+      } else if (d.wasSelected) {
+        /* second click on an already-selected object near a side: edit that side's length */
+        const ei = nearestObjEdge(o, toWorld(sp), 8 / view.s);
+        if (ei >= 0) openEdgeBox({ kind: "obj", id: o.id, i: ei });
+      }
+    } else if (!overRoom(sp)) {
+      /* dragged off the room view: back to staging, restoring its pre-drag pose */
+      removeToStaging(o.id);
+      setStatus("Moved to staging — its place in the room is remembered.");
+    } else renderSidebar();
+    return;
+  }
+  if (d.type === "maybeDeselect" && !d.moved) {
+    selectedId = null; renderSidebar();
+    return;
+  }
+  if (d.type === "edgeClick" && !d.moved) {
+    openEdgeBox(d.sel);
+    return;
+  }
+  if (d.type === "roomVertex") {
+    if (d.changed) { save(); renderSidebar(); }
+    else if (!d.moved) {
+      /* click on a corner: offer to remove it */
+      menuVertex = { layer: "floor", i: d.i };
+      showMenu({ x: e.clientX, y: e.clientY }, [
+        { label: "Remove this corner", fn: () => removeRoomPoint(d.i), danger: true },
+        { label: "Cancel", fn: () => {} },
+      ]);
+    }
+    return;
+  }
+  if (d.type === "wallDrag" && d.changed) { save(); renderSidebar(); return; }
+  if (d.type === "vsurf") {
+    if (d.changed) {                                   // room floor/ceiling changed
+      save(); renderSidebar();
+      const r = room();
+      setStatus("Room height " + fmtLen(r.height) +
+                ((r.base || 0) > 0 ? " · floor raised " + fmtLen(r.base) : "") + ".");
+    } else if (d.moved) renderSidebar();               // object pending, awaiting confirm
+    return;
+  }
+  if ((d.type === "resize" || d.type === "faceDrag") && d.moved) { renderSidebar(); return; }
+});
+
+cv.addEventListener("contextmenu", e => {
+  e.preventDefault();
+  const sp = evPos(e), wp = toWorld(sp);
+  if (mode === "draw") { drawPts.pop(); return; }   // right-click = undo last corner
+  if (pendingId) { cancelPending(); setStatus("Cancelled — reverted."); return; }
+  const o = hitObject(wp);
+  if (o) {
+    selectedId = o.id; renderSidebar();
+    const items = [];
+    if (!o.locked) items.push({ label: "Reposition (follow mouse)", fn: () => { ensurePending(o); floatingId = o.id; setStatus("Move the mouse, then click to drop; click again while green to confirm."); } });
+    items.push(
+      { label: o.locked ? "🔓 Unlock" : "🔒 Lock in place", fn: () => toggleLock(o.id) },
+      { label: "Priority (" + o.priority + "/10)…", fn: () => { const p = prompt("Priority 1–10 (higher = fitted first):", o.priority); if (p !== null) setPriority(o.id, +p); } },
+      { label: "Rename…", fn: () => renameObject(o.id) },
+      { label: "Duplicate", fn: () => duplicateObject(o.id) });
+    if (!o.locked) items.push(
+      { label: "Move to staging", fn: () => removeToStaging(o.id) },
+      { label: "Delete permanently", fn: () => deleteForever(o.id), danger: true });
+    showMenu({ x: e.clientX, y: e.clientY }, items);
+  }
+});
+
+stageCv.addEventListener("contextmenu", e => {
+  e.preventDefault();
+  const sid = hitStaging(evPosStage(e));
+  if (!sid) return;
+  selectedId = sid; renderSidebar();
+  const so = obj(sid);
+  const items = [];
+  if (!so.locked) items.push({ label: "Place in room", fn: () => placeFromStaging(sid) });
+  items.push(
+    { label: so.locked ? "🔓 Unlock" : "🔒 Lock", fn: () => toggleLock(sid) },
+    { label: "Priority (" + so.priority + "/10)…", fn: () => { const p = prompt("Priority 1–10 (higher = fitted first):", so.priority); if (p !== null) setPriority(sid, +p); } },
+    { label: "Rename…", fn: () => renameObject(sid) },
+    { label: "Duplicate", fn: () => duplicateObject(sid) });
+  if (!so.locked) items.push({ label: "Delete permanently", fn: () => deleteForever(sid), danger: true });
+  showMenu({ x: e.clientX, y: e.clientY }, items);
+});
+
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  const sp = evPos(e);
+  const f = Math.exp(-e.deltaY * 0.0012);
+  const ns = Math.min(Math.max(view.s * f, 0.05), 40);
+  view.ox = sp.x - (sp.x - view.ox) * ns / view.s;
+  view.oy = sp.y - (sp.y - view.oy) * ns / view.s;
+  view.s = ns;
+}, { passive: false });
+
+stageCv.addEventListener("dblclick", e => {
+  const sid = hitStaging(evPosStage(e));            // double-click a shelf object: rename it
+  if (sid) { selectedId = sid; renderSidebar(); renameObject(sid); }
+});
+
+cv.addEventListener("dblclick", e => {
+  const sp = evPos(e);
+  if (mode === "draw") { if (drawPts.length >= 3) finishDraw(); return; }
+  if (mode !== "select") return;
+  const o = hitObject(toWorld(sp));
+  if (o) {                                 // double-click a placed object: rename it
+    closeEdgeBox();
+    selectedId = o.id; renderSidebar();
+    renameObject(o.id);
+    return;
+  }
+  const re = roomEdgeAt(sp, 9);
+  if (re) {
+    closeEdgeBox();
+    insertRoomPoint(re.i, re.t);   // the ceiling corner follows automatically
+  }
+});
+
+/* ---------- keyboard ---------- */
+window.addEventListener("keydown", e => {
+  if (e.key === "Control") ctrlHeld = true;
+  if (e.key === "Alt") e.preventDefault();   // keep Alt free for elevation drags
+  /* Ctrl+Enter: confirm the pending object / place the selected staged one,
+     even while typing in a field (the edit is committed first via blur) */
+  if (e.key === "Enter" && e.ctrlKey) {
+    e.preventDefault();
+    const t = (e.target.tagName || "").toLowerCase();
+    if (t === "input" || t === "textarea") e.target.blur();
+    if (mode !== "select") return;
+    if (pendingId) {
+      const p = obj(pendingId);
+      if (p && fits(p)) { commitPending(); setStatus("Placed ✓"); }
+      else if (p) setStatus("Doesn’t fit (red) — move it, or press Esc to cancel.");
+    } else {
+      const o = obj(selectedId);
+      if (o && o.state === "staged") placeFromStaging(o.id);
+    }
+    return;
+  }
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") {
+    if (e.key === "Enter" && e.target === edgeLen) applyEdgeLength();
+    if (e.key === "Escape") closeEdgeBox();
+    return;
+  }
+  if (e.ctrlKey && (e.key === "z" || e.key === "Z")) { e.preventDefault(); if (!proposalMode) (e.shiftKey ? redo() : undo()); return; }
+  if (e.ctrlKey && (e.key === "y" || e.key === "Y")) { e.preventDefault(); if (!proposalMode) redo(); return; }
+  if (e.ctrlKey && (e.key === "d" || e.key === "D")) { e.preventDefault(); if (selectedId) duplicateObject(selectedId); return; }
+  if (e.code === "Space") { spaceHeld = true; e.preventDefault(); return; }
+  if (e.key === "Escape") {
+    if (drag && drag.type !== "pan") {          // abort the drag in progress, undoing its changes
+      const d = drag; drag = null; moveGuides = null;
+      if (d.geom) restoreRoomGeom(room(), d.geom);            // wall / corner / floor / ceiling drag
+      if (d.type === "vertex") drawPts[d.i] = d.v0;           // draw-mode corner
+      if (pendingId && (d.type === "move" || d.type === "resize" || d.type === "faceDrag" ||
+                        (d.type === "vsurf" && d.id))) cancelPending();
+      else renderSidebar();
+      setStatus(d.moved ? "Cancelled — reverted." : "");
+    }
+    else if (ctxMenu.style.display !== "none" || edgeBox.style.display !== "none") { hideMenu(); closeEdgeBox(); }
+    else if (mode === "draw" || mode === "calibrate") setMode("select");
+    else if (pendingId) { cancelPending(); setStatus("Cancelled — reverted."); }
+    else { selectedId = null; renderSidebar(); }
+  } else if (e.key === "Enter" && mode === "draw" && drawPts.length >= 3) {
+    finishDraw();
+  } else if (e.key === "Enter" && mode === "select") {
+    if (pendingId) {
+      const p = obj(pendingId);
+      if (p && fits(p)) { commitPending(); setStatus("Placed ✓"); }
+      else setStatus("Doesn’t fit (red) — move it, or press Esc to cancel.");
+    } else {
+      const o = obj(selectedId);
+      if (o && o.state === "staged") placeFromStaging(o.id);
+    }
+  } else if ((e.key === "r" || e.key === "R") && mode === "select") {
+    rotateBy(e.shiftKey ? -90 : 90);
+  } else if ((e.key === "p" || e.key === "P") && mode === "select") {
+    const o = obj(selectedId);
+    if (o) { o.state === "placed" ? removeToStaging(o.id) : placeFromStaging(o.id); }
+  } else if (e.key === "l" || e.key === "L") {
+    if (selectedId) toggleLock(selectedId);
+  } else if (e.key === "[" || e.key === "]") {
+    const o = obj(selectedId);
+    if (o) setPriority(o.id, o.priority + (e.key === "]" ? 1 : -1));
+  } else if (e.key === "F2") {
+    if (selectedId) { e.preventDefault(); renameObject(selectedId); }
+  } else if (e.key === "Tab" && mode === "select") {
+    e.preventDefault();
+    const list = [...placedHere(), ...staged()];
+    if (list.length) {
+      const idx = list.findIndex(o => o.id === selectedId);
+      const next = list[((idx < 0 ? 0 : idx + (e.shiftKey ? -1 : 1)) + list.length) % list.length];
+      selectedId = next.id; renderSidebar();
+      setStatus("Selected “" + next.name + "” (" + (next.state === "placed" ? "in room" : "staging") + ").");
+    }
+  } else if ((e.key === "PageUp" || e.key === "PageDown") && mode === "select") {
+    const o = selectedPlaced();
+    if (o) {
+      e.preventDefault();
+      const dz = (e.key === "PageUp" ? 1 : -1) * (e.shiftKey ? 10 : 1);
+      applyProp(ob => { ob.elev = Math.max(ob.elev + dz, 0); });
+    }
+  } else if (e.key === "Delete" || e.key === "Backspace") {
+    const o = obj(selectedId);
+    if (o && o.state === "placed") removeToStaging(selectedId);
+  } else if (e.key === "+" || e.key === "=") {
+    zoomBy(1.2);
+  } else if (e.key === "-" || e.key === "_") {
+    zoomBy(1/1.2);
+  } else if (e.key === "Home") {
+    fitView();
+  } else if (e.key.startsWith("Arrow") && mode === "select") {
+    const o = selectedPlaced();
+    if (o) {
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+      const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+      applyProp(ob => { ob.x += dx; ob.y += dy; });
+    }
+  }
+});
+function zoomBy(f) {
+  const cx = wrap.clientWidth / 2, cy = wrap.clientHeight / 2;
+  const ns = Math.min(Math.max(view.s * f, 0.05), 40);
+  view.ox = cx - (cx - view.ox) * ns / view.s;
+  view.oy = cy - (cy - view.oy) * ns / view.s;
+  view.s = ns;
+}
+window.addEventListener("keyup", e => {
+  if (e.code === "Space") spaceHeld = false;
+  if (e.key === "Control") ctrlHeld = false;
+});
+
+/* ---------- draw-room helpers ---------- */
+function hitDrawVertex(sp) {
+  for (let i = 0; i < drawPts.length; i++) {
+    const s = toScreen(drawPts[i]);
+    if (Math.hypot(s.x - sp.x, s.y - sp.y) < 9) return i;
+  }
+  return -1;
+}
+function finishDraw() {
+  const r = room();
+  if (drawPts.length >= 3) {
+    r.poly = drawPts.slice();
+    save();
+  }
+  drawPts = [];
+  setMode("select");
+  setStatus("Room outline updated.");
+}
+function finishCalibration() {
+  const r = room();
+  const [a, b] = calPts;
+  calPts = [];
+  setMode("select");
+  if (!r.blueprint) return;
+  const distWorld = Math.hypot(b.x - a.x, b.y - a.y);
+  const distPx = distWorld / r.blueprint.cmPerPx;
+  const real = prompt("Real distance between those two points, in " + unitLbl() + ":", String(toU(300)));
+  if (real === null) return;
+  const cm = fromU(real);
+  if (!(cm > 0) || !(distPx > 0)) return;
+  r.blueprint.cmPerPx = cm / distPx;
+  save();
+  setStatus("Blueprint scaled: " + r.blueprint.cmPerPx.toFixed(3) + " cm per image pixel.");
+}
+/* ---------- "Fit objects": propose an arrangement of all unlocked objects ---------- */
+/* Greedy: highest priority first (ties: larger footprint first). Each object keeps
+   its current pose if that still fits; otherwise the room is scanned over a grid of
+   positions × rotations, preferring spots close to where the object was before. */
+function findPlacement(o, r, bb) {
+  const temp = { ...o, state: "placed", roomId: r.id };
+  if (o.hasPose) {           // current pose still fine?
+    temp.x = o.x; temp.y = o.y; temp.angle = o.angle; temp.elev = o.elev;
+    if (fits(temp)) return { x: o.x, y: o.y, angle: o.angle, elev: o.elev };
+  }
+  const angles = [...new Set([o.angle, 0, 90, 180, 270])];
+  const elevs = [...new Set([o.elev, 0])];
+  const step = Math.max(5, Math.min(Math.min(o.w, o.d) / 2, Math.max(bb.w, bb.h) / 40));
+  const desX = o.hasPose ? o.x : bb.minX, desY = o.hasPose ? o.y : bb.minY;
+  let best = null, bestScore = Infinity;
+  for (const elev of elevs) {
+    for (const angle of angles) {
+      temp.angle = angle; temp.elev = elev;
+      for (let y = bb.minY; y <= bb.maxY; y += step) {
+        for (let x = bb.minX; x <= bb.maxX; x += step) {
+          temp.x = x; temp.y = y;
+          if (!fits(temp)) continue;
+          const score = Math.hypot(x - desX, y - desY)
+                      + (angle === o.angle ? 0 : 40) + (elev === o.elev ? 0 : 120);
+          if (score < bestScore) { bestScore = score; best = { x: Math.round(x), y: Math.round(y), angle, elev }; }
+        }
+      }
+    }
+    if (best) break;         // found something at the preferred elevation level
+  }
+  return best;
+}
+function autoFit() {
+  const r = room();
+  if (!r || r.poly.length < 3) { setStatus("Draw or size the room outline first."); return; }
+  if (proposalMode) return;
+  if (pendingId) resolvePending();
+  const movable = ws.objects.filter(o => !o.locked &&
+    (o.state === "staged" || (o.state === "placed" && o.roomId === r.id)));
+  if (!movable.length) { setStatus("Nothing to fit — no unlocked objects for this room."); return; }
+  clearTimeout(saveTimer);
+  proposalBackup = JSON.stringify(ws);
+  for (const o of movable) { o.state = "staged"; o.roomId = null; }   // clear, then re-place
+  movable.sort((a, b) => (b.priority - a.priority) || (b.w * b.d - a.w * a.d));
+  const bb = polyBBox(r.poly);
+  const unfit = [];
+  for (const o of movable) {
+    const c = findPlacement(o, r, bb);
+    if (c) { o.state = "placed"; o.roomId = r.id; o.x = c.x; o.y = c.y; o.angle = c.angle; o.elev = c.elev; o.hasPose = true; }
+    else unfit.push(o.name);
+  }
+  proposalMode = true;
+  selectedId = null;
+  updateProposalUi(unfit);
+  renderSidebar();
+  setStatus("Proposed layout — review it, adjust anything, then Accept or Cancel.");
+}
+function updateProposalUi(unfit) {
+  proposalBar.style.display = proposalMode ? "flex" : "none";
+  roomSelect.disabled = proposalMode;
+  newRoomBtn.disabled = proposalMode;
+  deleteRoomBtn.disabled = proposalMode;
+  fitObjectsBtn.disabled = proposalMode;
+  importBtn.disabled = proposalMode;
+  undoBtn.disabled = proposalMode || !undoStack.length;
+  redoBtn.disabled = proposalMode || !redoStack.length;
+  if (proposalMode) {
+    proposalInfo.textContent = unfit && unfit.length
+      ? "Couldn’t fit: " + unfit.join(", ") + " (left in staging)."
+      : "Everything fits.";
+    saveNote.textContent = "proposal — not saved";
+  }
+}
+function acceptProposal() {
+  if (!proposalMode) return;
+  if (pendingId) resolvePending();
+  proposalMode = false; proposalBackup = null;
+  updateProposalUi();
+  save(); renderSidebar();
+  setStatus("Layout accepted ✓");
+}
+function cancelProposal() {
+  if (!proposalMode) return;
+  pendingId = null; pendingOrig = null; floatingId = null;
+  proposalMode = false;
+  restoreState(proposalBackup);
+  proposalBackup = null;
+  updateProposalUi();
+  setStatus("Proposal cancelled — previous layout restored.");
+}
+
+/* ---------- rendering ---------- */
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = wrap.clientWidth * dpr;
+  cv.height = wrap.clientHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", resize);
+
+/* colour of hex at height z: solid at the floor, 50% lighter and 50% transparent at the ceiling */
+function shade(hex, z, roomH, alphaMul) {
+  const t = roomH > 0 ? Math.min(Math.max(z / roomH, 0), 1) : 0;
+  const m = 0.5 * t;
+  const v = parseInt(hex.slice(1), 16);
+  const rr = Math.round(((v>>16)&255) * (1-m) + 255*m);
+  const gg = Math.round(((v>>8)&255) * (1-m) + 255*m);
+  const bb = Math.round((v&255) * (1-m) + 255*m);
+  const a = (1 - 0.5*t) * (alphaMul == null ? 1 : alphaMul);
+  return `rgba(${rr},${gg},${bb},${a.toFixed(3)})`;
+}
+function drawObjShape(o, roomH, baseHex, opts) {
+  const zo = obOff((opts.baseZ || 0) + o.elev);   // draw at floor lift + elevation
+  const cs = corners(o, 0).map(p => toScreen({ x: p.x + zo.x, y: p.y + zo.y }));
+  ctx.beginPath();
+  cs.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+  ctx.closePath();
+  ctx.fillStyle = shade(baseHex, o.elev, roomH, opts.alpha);
+  ctx.fill();
+  ctx.lineWidth = opts.strokeW;
+  ctx.strokeStyle = opts.stroke;
+  ctx.stroke();
+  if (o.h > 0 && !flatView) {
+    const off = obOff(o.h);
+    const top = corners(o, 0).map(p => toScreen({ x: p.x + zo.x + off.x, y: p.y + zo.y + off.y }));
+    const c0 = shade(baseHex, o.elev, roomH, opts.alpha), c1 = shade(baseHex, o.elev + o.h, roomH, opts.alpha);
+    for (let i = 0; i < 4; i++) {
+      const g = ctx.createLinearGradient(cs[i].x, cs[i].y, top[i].x, top[i].y);
+      g.addColorStop(0, c0); g.addColorStop(1, c1);
+      ctx.strokeStyle = g; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(cs[i].x, cs[i].y); ctx.lineTo(top[i].x, top[i].y); ctx.stroke();
+    }
+    ctx.beginPath();
+    top.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.closePath();
+    ctx.fillStyle = shade(baseHex, o.elev + o.h, roomH, 0.25 * (opts.alpha == null ? 1 : opts.alpha));
+    ctx.fill();
+    ctx.strokeStyle = c1; ctx.lineWidth = 1.6; ctx.stroke();
+  }
+  const wpx = o.w * view.s, dpx = o.d * view.s;
+  if (Math.min(wpx, dpx) > 22) {
+    const s = toScreen({ x: o.x + zo.x, y: o.y + zo.y });
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(o.angle * Math.PI / 180);
+    ctx.fillStyle = "rgba(20,25,32,0.85)";
+    ctx.font = "600 " + Math.max(10, Math.min(13, wpx/8)) + "px Segoe UI";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText((o.locked ? "🔒 " : "") + o.name, 0, -6, wpx - 6);
+    ctx.font = lenFontPx(10) + "px Segoe UI";
+    ctx.fillStyle = "rgba(20,25,32,0.55)";
+    ctx.fillText(fmtDim(o.w) + "×" + fmtDim(o.d) + (o.h ? "×" + fmtDim(o.h) : "") +
+                 (o.elev ? " @z" + fmtDim(o.elev) : ""), 0, 7, wpx - 6);
+    ctx.restore();
+  }
+}
+
+function draw() {
+  const cw = wrap.clientWidth, ch = wrap.clientHeight;
+  ctx.clearRect(0, 0, cw, ch);
+  const r = room();
+
+  /* blueprint image */
+  if (r && r.blueprint) {
+    const img = getBpImage(r);
+    if (img) {
+      const bfo = floorOff(r);          // the blueprint sits on the floor plane
+      const p0 = toScreen({ x: bfo.x, y: bfo.y });
+      ctx.globalAlpha = r.blueprint.opacity;
+      ctx.drawImage(img, p0.x, p0.y,
+        img.naturalWidth * r.blueprint.cmPerPx * view.s,
+        img.naturalHeight * r.blueprint.cmPerPx * view.s);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* grid */
+  const w0 = toWorld({ x: 0, y: 0 }), w1 = toWorld({ x: cw, y: ch });
+  const step = view.s > 6 ? 10 : view.s > 1.2 ? 50 : 100;
+  ctx.strokeStyle = "rgba(0,0,0,0.06)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = Math.floor(w0.x/step)*step; x <= w1.x; x += step) {
+    const s = toScreen({x, y:0}); ctx.moveTo(s.x, 0); ctx.lineTo(s.x, ch);
+  }
+  for (let y = Math.floor(w0.y/step)*step; y <= w1.y; y += step) {
+    const s = toScreen({x:0, y}); ctx.moveTo(0, s.y); ctx.lineTo(cw, s.y);
+  }
+  ctx.stroke();
+
+  /* room floor + height */
+  if (r && r.poly.length >= 3 && mode !== "draw") {
+    const rfo = floorOff(r);
+    ctx.beginPath();
+    r.poly.forEach((p, i) => { const s = toScreen(basePos(r, i)); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+    ctx.closePath();
+    ctx.fillStyle = r.blueprint ? "rgba(240,244,250,0.25)" : "rgba(240,244,250,0.9)";
+    ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 2.5; ctx.stroke();
+
+    ctx.fillStyle = "rgba(60,70,85,0.75)"; ctx.font = lenFontPx(11) + "px Segoe UI";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (let i = 0; i < r.poly.length; i++) {
+      const a = r.poly[i], b = r.poly[(i+1)%r.poly.length];
+      const len = Math.hypot(b.x-a.x, b.y-a.y);
+      if (len < 20) continue;
+      const m = toScreen({ x:(a.x+b.x)/2 + rfo.x, y:(a.y+b.y)/2 + rfo.y });
+      const nx = -(b.y-a.y)/len, ny = (b.x-a.x)/len;
+      ctx.fillText(fmtLen(len), m.x + nx*14, m.y + ny*14);
+    }
+    if ((r.base || 0) > 0) {
+      const fc = toScreen(polyCentroid(r.poly));
+      ctx.fillStyle = "rgba(128,128,128,0.55)"; ctx.font = "italic " + lenFontPx(11) + "px Segoe UI";
+      ctx.fillText("floor raised " + fmtLen(r.base), fc.x + rfo.x*view.s, fc.y + rfo.y*view.s + 16);
+    }
+
+    if (r.height > 0 && !flatView) {
+      for (let i = 0; i < r.poly.length; i++) {
+        const a = toScreen(basePos(r, i)), b = toScreen(ceilPos(r, i));
+        const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+        g.addColorStop(0, "rgba(0,0,0,1)");
+        g.addColorStop(1, "rgba(128,128,128,0.5)");
+        ctx.strokeStyle = g; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+      ctx.beginPath();
+      r.poly.forEach((_, i) => {
+        const s = toScreen(ceilPos(r, i));
+        i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y);
+      });
+      ctx.closePath();
+      ctx.strokeStyle = "rgba(128,128,128,0.5)"; ctx.lineWidth = 1.6; ctx.stroke();
+      const cc = toScreen(polyCentroid(r.poly));
+      const off = obOff((r.base || 0) + r.height);
+      ctx.fillStyle = "rgba(128,128,128,0.45)"; ctx.font = "italic " + lenFontPx(11) + "px Segoe UI";
+      ctx.fillText("ceiling " + fmtLen(r.height), cc.x + off.x*view.s, cc.y + off.y*view.s);
+    }
+  }
+
+  /* draw-mode outline in progress */
+  if (mode === "draw" && drawPts.length) {
+    let end = mouseWorld;
+    if (ctrlHeld) {
+      const last = drawPts[drawPts.length - 1];
+      let base = 0;
+      if (drawPts.length >= 2) {
+        const prev = drawPts[drawPts.length - 2];
+        base = Math.atan2(last.y - prev.y, last.x - prev.x);
+      }
+      end = angleSnap(last, mouseWorld, base);
+    }
+    ctx.beginPath();
+    drawPts.forEach((p, i) => { const s = toScreen(p); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); });
+    const ms = toScreen(end);
+    ctx.lineTo(ms.x, ms.y);
+    ctx.strokeStyle = "#4c6ef5"; ctx.lineWidth = 2; ctx.setLineDash([6,4]); ctx.stroke(); ctx.setLineDash([]);
+    drawPts.forEach((p, i) => {
+      const s = toScreen(p);
+      ctx.beginPath(); ctx.arc(s.x, s.y, i === 0 ? 6 : 4, 0, Math.PI*2);
+      ctx.fillStyle = i === 0 ? "#2f9e63" : "#4c6ef5"; ctx.fill();
+    });
+  }
+
+  /* calibration markers */
+  for (const p of calPts) {
+    const s = toScreen(p);
+    ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, Math.PI*2);
+    ctx.strokeStyle = "#d6493c"; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  /* objects */
+  if (r && mode !== "draw") {
+    const roomH = r.height;
+    /* 3D: paint back-to-front — higher objects sit further back, lower (nearer)
+       objects overlap them. Flat: footprints coincide, so draw higher objects
+       last (a lamp ON a table shows above it). Pending stays on top. */
+    const list = placedHere().slice().sort((a, b) =>
+      ((a.id === pendingId) - (b.id === pendingId)) ||
+      (flatView ? a.elev - b.elev : b.elev - a.elev));
+    for (const o of list) {
+      const isPending = o.id === pendingId;
+      const ok = isPending ? fits(o) : true;
+      const baseHex = isPending ? (ok ? "#2f9e63" : "#d6493c") : o.color;
+      drawObjShape(o, roomH, baseHex, {
+        strokeW: isPending || o.id === selectedId ? 2.5 : 1.2,
+        stroke: isPending ? (ok ? "#2f9e63" : "#d6493c")
+               : (o.id === selectedId ? "#4c6ef5" : shade("#1e232d", o.elev, roomH)),
+        baseZ: r.base || 0,
+      });
+    }
+  }
+
+  /* Ctrl-snap alignment guides while moving an object */
+  if (drag && drag.type === "move" && moveGuides && r && r.poly.length >= 3) {
+    const bb = polyBBox(r.poly), fo = floorOff(r);
+    ctx.save();
+    ctx.strokeStyle = "#c026d3"; ctx.lineWidth = 1; ctx.setLineDash([5, 4]);
+    if (moveGuides.x != null) {
+      const a = toScreen({ x: moveGuides.x + fo.x, y: bb.minY + fo.y });
+      const b2 = toScreen({ x: moveGuides.x + fo.x, y: bb.maxY + fo.y });
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
+    }
+    if (moveGuides.y != null) {
+      const a = toScreen({ x: bb.minX + fo.x, y: moveGuides.y + fo.y });
+      const b2 = toScreen({ x: bb.maxX + fo.x, y: moveGuides.y + fo.y });
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* selected edge highlight */
+  if (selEdge) {
+    const info = edgeInfo(selEdge);
+    if (info) {
+      ctx.strokeStyle = "#4c6ef5"; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.moveTo(info.a.x, info.a.y); ctx.lineTo(info.b.x, info.b.y); ctx.stroke();
+    }
+  }
+
+  /* corner handles */
+  if (mode === "select" && r && r.poly.length >= 3) {
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < r.poly.length; i++) {
+      const s = toScreen(basePos(r, i));
+      const hot = menuVertex && menuVertex.layer === "floor" && menuVertex.i === i;
+      ctx.fillStyle = hot ? "#4c6ef5" : "#fff"; ctx.strokeStyle = "#3a4450";
+      ctx.fillRect(s.x-3.5, s.y-3.5, 7, 7); ctx.strokeRect(s.x-3.5, s.y-3.5, 7, 7);
+    }
+    const selO = selectedPlaced();
+    if (selO) {
+      const oOff = objDrawOff(selO);
+      ctx.fillStyle = "#4c6ef5";
+      for (const c of corners(selO, 0)) {
+        const s = toScreen({ x: c.x + oOff.x, y: c.y + oOff.y });
+        ctx.fillRect(s.x-3.5, s.y-3.5, 7, 7);
+      }
+    }
+  }
+
+  /* placement preview while dragging a staged object over the room (the shelf
+     itself is a separate canvas/panel now — see drawStaging() below) */
+  if (drag && drag.type === "stageDrag" && drag.moved && drag.cur && overRoom(drag.cur) && r && r.poly.length >= 3) {
+    const o = obj(drag.id);
+    if (o) {
+      const wp = toWorld(drag.cur);
+      const go = obOff((r.base || 0) + o.elev);   // draw the ghost under the cursor
+      const temp = { ...o, state: "placed", roomId: r.id, x: wp.x - go.x, y: wp.y - go.y };
+      const ok = fits(temp);
+      drawObjShape(temp, r.height, ok ? "#2f9e63" : "#d6493c",
+                   { strokeW: 2.5, stroke: ok ? "#2f9e63" : "#d6493c", alpha: 0.6, baseZ: r.base || 0 });
+    }
+  }
+
+  drawStaging();
+  requestAnimationFrame(draw);
+}
+
+/* ---------- staging shelf (own canvas/panel — dockable/resizable separately from the room) ---------- */
+let stageDragGhost = null;
+function updateStageDragGhost(o, clientX, clientY, visible) {
+  if (!visible || !o) {
+    if (stageDragGhost) { stageDragGhost.remove(); stageDragGhost = null; }
+    return;
+  }
+  if (!stageDragGhost) {
+    stageDragGhost = document.createElement("div");
+    stageDragGhost.style.cssText = "position:fixed; z-index:58; pointer-events:none; border:1.2px solid rgba(30,35,45,.55); opacity:.75;";
+    document.body.appendChild(stageDragGhost);
+  }
+  const s = Math.min(60 / o.w, 40 / o.d);
+  const ww = o.w * s, dd = o.d * s;
+  stageDragGhost.style.left = (clientX - ww / 2) + "px";
+  stageDragGhost.style.top = (clientY - dd / 2) + "px";
+  stageDragGhost.style.width = ww + "px";
+  stageDragGhost.style.height = dd + "px";
+  stageDragGhost.style.background = o.color;
+}
+
+let lastStageW = -1, lastStageH = -1;
+const STAGE_SLOT_W = 96, STAGE_SLOT_H = 92, STAGE_GAP = 6, STAGE_PAD = 10, STAGE_LABEL_H = 20;
+function layoutStaging() {
+  const w = stageWrap.clientWidth;
+  const st = staged();
+  const perRow = Math.max(1, Math.floor((w - STAGE_PAD * 2 + STAGE_GAP) / (STAGE_SLOT_W + STAGE_GAP)));
+  const rows = st.length ? Math.ceil(st.length / perRow) : 1;
+  const needed = STAGE_LABEL_H + rows * (STAGE_SLOT_H + STAGE_GAP) + STAGE_PAD;
+  const h = Math.max(stageWrap.clientHeight, needed);
+  if (w !== lastStageW || h !== lastStageH) {
+    const dpr = window.devicePixelRatio || 1;
+    stageCv.style.height = h + "px";
+    stageCv.width = Math.max(1, w) * dpr; stageCv.height = Math.max(1, h) * dpr;
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    lastStageW = w; lastStageH = h;
+  }
+  return { w, h, perRow };
+}
+function drawStaging() {
+  const { w, h, perRow } = layoutStaging();
+  sctx.clearRect(0, 0, w, h);
+  sctx.fillStyle = "#eceef2"; sctx.fillRect(0, 0, w, h);
+  const overStrip = drag && drag.type === "move" && drag.moved && drag.cur && !overRoom(drag.cur);
+  sctx.strokeStyle = overStrip ? "#4c6ef5" : "#c9cdd4";
+  sctx.lineWidth = overStrip ? 2.5 : 1;
+  sctx.beginPath(); sctx.moveTo(0, 1); sctx.lineTo(w, 1); sctx.stroke();
+  sctx.fillStyle = "#7a828c"; sctx.font = "600 10px Segoe UI";
+  sctx.textAlign = "left"; sctx.textBaseline = "top";
+  sctx.fillText("STAGING AREA", 10, 6);
+  sctx.font = "10px Segoe UI";
+  sctx.fillText(overStrip ? "release to move the object here" :
+               "drag objects into the room · right-click for options", 100, 6);
+
+  stagingSlots = [];
+  const st = staged();
+  if (!st.length) {
+    sctx.fillStyle = "rgba(122,130,140,0.65)"; sctx.font = "italic 12px Segoe UI";
+    sctx.fillText("empty — use “New object” to create one", 10, STAGE_LABEL_H + 32);
+    return;
+  }
+  let col = 0, row = 0;
+  for (const o of st) {
+    const slot = { id: o.id, x: STAGE_PAD + col * (STAGE_SLOT_W + STAGE_GAP),
+                   y: STAGE_LABEL_H + row * (STAGE_SLOT_H + STAGE_GAP), w: STAGE_SLOT_W, h: STAGE_SLOT_H };
+    stagingSlots.push(slot);
+    if (o.id === selectedId) {
+      sctx.fillStyle = "rgba(59,111,212,0.10)";
+      sctx.strokeStyle = "#4c6ef5"; sctx.lineWidth = 1.5;
+      sctx.fillRect(slot.x, slot.y, slot.w, slot.h);
+      sctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
+    }
+    const s = Math.min((slot.w - 14) / o.w, 46 / o.d);
+    const ww = o.w * s, dd = o.d * s;
+    const cx = slot.x + slot.w/2, cy = slot.y + 32;
+    sctx.fillStyle = o.color;
+    sctx.strokeStyle = "rgba(30,35,45,0.55)"; sctx.lineWidth = 1.2;
+    sctx.fillRect(cx - ww/2, cy - dd/2, ww, dd);
+    sctx.strokeRect(cx - ww/2, cy - dd/2, ww, dd);
+    sctx.fillStyle = "#3a4450"; sctx.font = "600 11px Segoe UI";
+    sctx.textAlign = "center"; sctx.textBaseline = "top";
+    sctx.fillText((o.locked ? "🔒 " : "") + o.name, cx, slot.y + 60, slot.w - 6);
+    sctx.fillStyle = "#7a828c"; sctx.font = lenFontPx(10) + "px Segoe UI";
+    sctx.fillText(fmtDim(o.w) + "×" + fmtDim(o.d) + (o.h ? "×" + fmtDim(o.h) : "") +
+                 (o.priority !== 5 ? " · p" + o.priority : ""), cx, slot.y + 74, slot.w - 6);
+    col++;
+    if (col >= perRow) { col = 0; row++; }
+  }
+}
+/* ---------- sidebar rendering ---------- */
+function setVal(input, v) {
+  if (document.activeElement !== input) input.value = v;
+}
+function updateUnitLabels() {
+  const u = unitLbl();
+  document.querySelectorAll(".unit").forEach(el => { el.textContent = u; });
+}
+function renderSidebar() {
+  unitImp.classList.toggle("on", unitLbl() === "in");
+  unitMet.classList.toggle("on", unitLbl() !== "in");
+  updateUnitLabels();
+  roomSelect.innerHTML = "";
+  for (const r of ws.rooms) {
+    const op = document.createElement("option");
+    op.value = r.id; op.textContent = r.name;
+    if (r.id === ws.currentRoomId) op.selected = true;
+    roomSelect.appendChild(op);
+  }
+  const r = room();
+  if (r) {
+    const b = r.poly.length >= 3 ? polyBBox(r.poly) : { w: "", h: "" };
+    setVal(roomW, b.w === "" ? "" : toU(b.w));
+    setVal(roomD, b.h === "" ? "" : toU(b.h));
+    setVal(roomH, toU(r.height));
+    bpControls.style.display = r.blueprint ? "" : "none";
+  }
+
+  const selO = obj(selectedId);
+  const showProps = selO && (selO.state === "staged" ||
+                    (selO.state === "placed" && selO.roomId === ws.currentRoomId));
+  propsSection.style.display = showProps ? "" : "none";
+  if (showProps) {
+    const placed = selO.state === "placed";
+    setVal(pName, selO.name);
+    setVal(pColor, selO.color);
+    setVal(pW, toU(selO.w)); setVal(pD, toU(selO.d)); setVal(pH, toU(selO.h));
+    rowPos.style.display = placed ? "" : "none";
+    rowAngle.style.display = placed ? "" : "none";
+    if (placed) {
+      const m = objBBoxMin(selO);
+      setVal(pX, toU(m.x)); setVal(pY, toU(m.y)); setVal(pZ, toU(selO.elev));
+      setVal(pA, selO.angle);
+    }
+    pLock.checked = selO.locked;
+    setVal(pPrio, selO.priority);
+    propPlace.textContent = placed ? "To staging" : "Place in room";
+    propPlace.disabled = selO.locked;
+    propDelete.disabled = selO.locked;
+  }
+}
+
+/* ---------- toolbar & sidebar wiring ---------- */
+modeSelect.onclick = () => setMode("select");
+modeDraw.onclick = () => setMode("draw");
+rotCW.onclick = () => rotateBy(90);
+rotCCW.onclick = () => rotateBy(-90);
+rotSet.onclick = () => rotateTo(+rotAbs.value || 0);
+fitViewBtn.onclick = fitView;
+undoBtn.onclick = undo;
+redoBtn.onclick = redo;
+fitObjectsBtn.onclick = autoFit;
+proposalAccept.onclick = acceptProposal;
+proposalCancel.onclick = cancelProposal;
+roomSelect.onchange = () => switchRoom(roomSelect.value);
+newRoomBtn.onclick = newRoom;
+renameRoomBtn.onclick = () => {
+  const r = room(); if (!r) return;
+  const n = prompt("New name:", r.name);
+  if (n !== null && n.trim()) { r.name = n.trim(); save(); renderSidebar(); }
+};
+deleteRoomBtn.onclick = deleteRoom;
+roomW.onchange = () => setRoomDim("x", fromU(roomW.value));
+roomD.onchange = () => setRoomDim("y", fromU(roomD.value));
+roomH.onchange = () => {
+  const r = room(); if (!r) return;
+  r.height = Math.min(Math.max(Math.round(fromU(roomH.value)) || 0, 0), 2000);
+  roomH.value = toU(r.height);
+  save();
+};
+function setUnits(u) {
+  const prev = unitLbl();
+  ws.units = u === "in" ? "in" : "cm";
+  if (unitLbl() !== prev) {          // convert the New-object form entries in place
+    for (const inp of [objW, objD, objH]) {
+      const v = parseFloat(inp.value);
+      if (!isFinite(v)) continue;
+      const cm = prev === "in" ? v * CM_PER_IN : v;
+      inp.value = toU(cm);
+    }
+  }
+  closeEdgeBox();
+  save(); renderSidebar();
+  setStatus(ws.units === "in"
+    ? "Imperial: the canvas shows feet′inches″ (e.g. 8′4″); inputs are typed in inches (decimals ok; dialogs also accept 5'10\")."
+    : "Metric: lengths are shown and typed in centimetres.");
+}
+unitImp.onclick = () => setUnits("in");
+unitMet.onclick = () => setUnits("cm");
+
+/* Flat / 3D view toggle — drawing only; nothing about fitting changes */
+function setViewMode(flat, silent) {
+  flatView = flat;
+  try { localStorage.setItem("rfFlatView", flat ? "1" : "0"); } catch (e) {}
+  view2d.classList.toggle("on", flat);
+  view3d.classList.toggle("on", !flat);
+  if (!silent) setStatus(flat
+    ? "Flat view — heights, Z positions and stacking still apply; the height axis just isn't drawn."
+    : "3D view — heights are drawn along the diagonal axis.");
+}
+view2d.onclick = () => setViewMode(true);
+view3d.onclick = () => setViewMode(false);
+addObjBtn.onclick = addObject;
+objName.addEventListener("keydown", e => { if (e.key === "Enter") addObject(); });
+
+/* properties panel — placed objects go through the fit check; staged apply directly */
+function propEdit(fn) {
+  const o = obj(selectedId);
+  if (!o) return;
+  if (o.state === "placed") applyProp(fn);
+  else { fn(o); save(); renderSidebar(); }
+}
+pName.onchange = () => { const o = obj(selectedId); if (o && pName.value.trim()) { o.name = pName.value.trim(); save(); renderSidebar(); } };
+pColor.oninput = () => { const o = obj(selectedId); if (o) { o.color = pColor.value; save(); } };
+pW.onchange = () => propEdit(o => { o.w = Math.max(Math.round(fromU(pW.value)) || 1, 1); });
+pD.onchange = () => propEdit(o => { o.d = Math.max(Math.round(fromU(pD.value)) || 1, 1); });
+pH.onchange = () => propEdit(o => { o.h = Math.max(Math.round(fromU(pH.value)) || 0, 0); });
+pX.onchange = () => applyProp(o => { o.x += Math.round(fromU(pX.value)) - Math.round(objBBoxMin(o).x); });
+pY.onchange = () => applyProp(o => { o.y += Math.round(fromU(pY.value)) - Math.round(objBBoxMin(o).y); });
+pZ.onchange = () => applyProp(o => { o.elev = Math.max(Math.round(fromU(pZ.value)) || 0, 0); });
+pA.onchange = () => applyProp(o => { o.angle = (((+pA.value || 0) % 360) + 360) % 360; });
+pLock.onchange = () => { if (selectedId) toggleLock(selectedId); };
+pPrio.onchange = () => { if (selectedId) setPriority(selectedId, +pPrio.value); };
+propPlace.onclick = () => {
+  const o = obj(selectedId);
+  if (!o) return;
+  if (o.state === "placed") removeToStaging(o.id);
+  else placeFromStaging(o.id);
+};
+propDelete.onclick = () => { if (selectedId) deleteForever(selectedId); };
+edgeApply.onclick = applyEdgeLength;
+
+fileLinkBtn.onclick = linkNewFile;
+fileOpenBtn.onclick = openExistingFile;
+fileReconnectBtn.onclick = reconnectFile;
+
+userBtn.onclick = () => {
+  if (!cloudUser) { openAuthDialog(); return; }
+  const r = userBtn.getBoundingClientRect();
+  showMenu({ x: r.right - 210, y: r.bottom + 4 }, [
+    { label: "⟳ Sync now", fn: syncNow },
+    { label: "Switch account…", fn: () => { signOut(); setTimeout(openAuthDialog, 50); } },
+    { label: "Sign out", fn: signOut },
+  ]);
+};
+
+function openAuthDialog() {
+  if (!cloudReady()) {
+    alert("Cloud sign-in isn’t set up yet.\n\nAdmin: create the free Firebase project and paste its two values into the CLOUD settings near the top of this file — step-by-step instructions are in HOW-TO-IMPLEMENT.md (“User accounts & cross-device sync”).");
+    return;
+  }
+  authErr.textContent = "";
+  authPw.value = "";
+  authBack.style.display = "flex";
+  authEmail.focus();
+}
+function closeAuthDialog() { authBack.style.display = "none"; }
+authCancel.onclick = closeAuthDialog;
+authBack.onmousedown = e => { if (e.target === authBack) closeAuthDialog(); };
+authBox.onsubmit = e => { e.preventDefault(); doAuth(false); };
+authCreate.onclick = () => doAuth(true);
+authForgot.onclick = async () => {
+  const email = authEmail.value.trim();
+  if (!email) { authErr.textContent = "Type your email above first, then click “Forgot password?”."; return; }
+  try {
+    await authCall("sendOobCode", { requestType: "PASSWORD_RESET", email });
+    authErr.textContent = "Password-reset email sent to " + email + " — check your inbox.";
+  } catch (err) { authErr.textContent = (err && err.message) || String(err); }
+};
+async function doAuth(create) {
+  const email = authEmail.value.trim(), pw = authPw.value;
+  if (!email || pw.length < 6) {
+    authErr.textContent = "Enter your email and a password of at least 6 characters.";
+    return;
+  }
+  authGo.disabled = authCreate.disabled = true;
+  authErr.textContent = create ? "Creating your account…" : "Signing in…";
+  try {
+    const j = await authCall(create ? "signUp" : "signInWithPassword",
+                             { email, password: pw, returnSecureToken: true });
+    const carried = parkWorkspace();   // park the on-screen workspace before switching
+    rememberAuth(j, email);
+    if (create) {                      // a brand-new account starts from what's on screen
+      try { localStorage.setItem(wsKey(), carried); } catch (e) {}
+      setLocalStamp(Date.now());
+    }
+    closeAuthDialog();
+    await syncOnSignIn(create);
+  } catch (err) {
+    authErr.textContent = (err && err.message) || String(err);
+  }
+  authGo.disabled = authCreate.disabled = false;
+}
+
+/* ---------- welcome guide (opens on first visit; “❓ Guide” reopens it) ---------- */
+const GUIDE_LS = "rfGuideSeen";
+function openGuide() { guideBack.style.display = "flex"; guideClose.focus(); }
+function closeGuide() {
+  guideBack.style.display = "none";
+  try { localStorage.setItem(GUIDE_LS, "1"); } catch (e) {}
+}
+helpBtn.onclick = openGuide;
+guideClose.onclick = closeGuide;
+guideBack.onmousedown = e => { if (e.target === guideBack) closeGuide(); };
+/* capture phase: while the guide is open, Esc closes it and the canvas
+   shortcuts behind the dialog stay inert */
+window.addEventListener("keydown", e => {
+  if (guideBack.style.display !== "flex") return;
+  if (e.key === "Escape") closeGuide();
+  e.stopPropagation();
+}, true);
+
+exportBtn.onclick = () => {
+  const blob = new Blob([JSON.stringify(ws, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "room-fitter-workspace.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+importBtn.onclick = () => importFile.click();
+importFile.onchange = () => {
+  const f = importFile.files[0];
+  importFile.value = "";
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const data = JSON.parse(rd.result);
+      if (!data || !Array.isArray(data.rooms) || !Array.isArray(data.objects)) throw new Error("bad format");
+      if (!confirm("Replace the current workspace with the imported one?")) return;
+      ws = data;
+      if (!ws.rooms.length) ws.rooms.push(defaultRoom());
+      if (!ws.rooms.find(x => x.id === ws.currentRoomId)) ws.currentRoomId = ws.rooms[0].id;
+      migrate();
+      pendingId = null; pendingOrig = null; selectedId = null;
+      fitView(); save(); renderSidebar();
+    } catch (err) { alert("Could not import: " + err.message); }
+  };
+  rd.readAsText(f);
+};
+
+bpLoadBtn.onclick = () => bpFile.click();
+bpFile.onchange = () => {
+  const f = bpFile.files[0];
+  bpFile.value = "";
+  const r = room();
+  if (!f || !r) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    r.blueprint = { data: rd.result, cmPerPx: 1, opacity: (+bpOpacity.value || 45) / 100 };
+    save(); renderSidebar();
+    setStatus("Blueprint loaded at 1 cm/pixel — use Calibrate to set the real scale, then Draw room to trace the walls.");
+  };
+  rd.readAsDataURL(f);
+};
+bpCalBtn.onclick = () => {
+  const r = room();
+  if (!r || !r.blueprint) return;
+  setMode(mode === "calibrate" ? "select" : "calibrate");
+};
+bpRemoveBtn.onclick = () => {
+  const r = room();
+  if (r && r.blueprint) { r.blueprint = null; save(); renderSidebar(); }
+};
+bpOpacity.oninput = () => {
+  const r = room();
+  if (r && r.blueprint) { r.blueprint.opacity = (+bpOpacity.value) / 100; save(); }
+};
+
+/* ---------- AI blueprint import ----------
+   Sends the floor-plan image to the Anthropic API (vision + structured JSON
+   output) and turns the result into rooms with prefilled dimensions and
+   contents. All lengths in the exchange are centimetres. */
+const AI_KEY_LS = "rfAnthropicKey";
+const AI_MODEL = "claude-opus-4-8";
+let aiKeySession = null;   // unlocked key, kept in memory only until the tab closes
+
+/* --- password-protected key storage ---------------------------------------
+   The admin pastes the real sk-ant-… key once and picks a short password.
+   The key is encrypted with AES-GCM (key derived from the password via
+   PBKDF2) and the encrypted blob is stored INSIDE the workspace, so it
+   travels with auto-save, Export and the linked JSON file. Users only ever
+   type the short password. */
+const _te = new TextEncoder(), _td = new TextDecoder();
+const _b64 = u8 => btoa(String.fromCharCode(...u8));
+const _unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function _pwAesKey(pw, salt) {
+  const base = await crypto.subtle.importKey("raw", _te.encode(pw), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function encryptApiKey(apiKey, pw) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const k = await _pwAesKey(pw, salt);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, k, _te.encode(apiKey)));
+  const out = new Uint8Array(28 + ct.length);
+  out.set(salt); out.set(iv, 16); out.set(ct, 28);
+  return _b64(out);
+}
+async function decryptApiKey(blob, pw) {
+  const u = _unb64(blob);
+  const k = await _pwAesKey(pw, u.slice(0, 16));
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: u.slice(16, 28) }, k, u.slice(28));
+  return _td.decode(pt);
+}
+/* the encrypted key lives in the workspace AND a browser-wide copy, so one
+   admin setup covers every signed-in user on this computer */
+const AI_ENC_LS = "rfAiKeyEnc";
+function getKeyEnc() {
+  if (ws && ws.aiKeyEnc) return ws.aiKeyEnc;
+  try { return localStorage.getItem(AI_ENC_LS) || null; } catch (e) { return null; }
+}
+async function getAiKey(forceAsk) {
+  if (aiKeySession && !forceAsk) return aiKeySession;
+  let legacy = "";
+  try { legacy = localStorage.getItem(AI_KEY_LS) || ""; } catch (e) {}
+  let enc = getKeyEnc();
+  if (legacy && !enc && !forceAsk) { aiKeySession = legacy; return legacy; }   // old-style plain key
+  const ask = enc
+    ? "Enter the access password for AI auto-import.\n(Admin: paste a full sk-ant-… API key instead to replace the stored one.)"
+    : "Admin setup — paste your Anthropic API key (sk-ant-…).\nYou'll then choose a short password everyone can type instead of the key.";
+  const inp = prompt(ask, "");
+  if (inp === null) return null;
+  const v = inp.trim();
+  if (!v) return null;
+  if (/^sk-ant-/i.test(v)) {                       // admin path: store a (new) key
+    const pw = prompt("Choose a short access password — this is what users will type to unlock the key.\n(Leave blank to store the key unprotected in this browser only.)", "");
+    if (pw === null) return null;
+    if (pw.trim()) {
+      const blob = await encryptApiKey(v, pw.trim());
+      ws.aiKeyEnc = blob;
+      try { localStorage.setItem(AI_ENC_LS, blob); } catch (e) {}
+      try { localStorage.removeItem(AI_KEY_LS); } catch (e) {}
+      save();
+      alert("Done — the key is stored encrypted. Everyone using this browser (and this workspace file) can now run auto-import by typing the password.");
+    } else {
+      ws.aiKeyEnc = null;
+      try { localStorage.removeItem(AI_ENC_LS); } catch (e) {}
+      try { localStorage.setItem(AI_KEY_LS, v); } catch (e) {}
+      save();
+    }
+    aiKeySession = v;
+    return v;
+  }
+  if (!enc) {
+    alert("That doesn't look like an API key (it should start with sk-ant-…), and no password-protected key has been set up yet.");
+    return null;
+  }
+  try {
+    aiKeySession = await decryptApiKey(enc, v);    // user path: short password
+    return aiKeySession;
+  } catch (e) {
+    alert("Wrong password — try again, or ask whoever set up the key.");
+    return null;
+  }
+}
+
+/* downscale + flatten to JPEG so tokens and storage stay reasonable */
+function prepareAiImage(dataUrl) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1800;
+      const sc = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight, 1));
+      const w = Math.max(Math.round(img.naturalWidth * sc), 1);
+      const h = Math.max(Math.round(img.naturalHeight * sc), 1);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      const cx = c.getContext("2d");
+      cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h);
+      cx.drawImage(img, 0, 0, w, h);
+      const out = c.toDataURL("image/jpeg", 0.85);
+      res({ dataUrl: out, b64: out.split(",")[1], w, h });
+    };
+    img.onerror = () => rej(new Error("could not read the image"));
+    img.src = dataUrl;
+  });
+}
+
+const AI_SCHEMA = {
+  type: "object",
+  properties: {
+    rooms: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          width_cm: { type: "number" },
+          depth_cm: { type: "number" },
+          height_cm: { anyOf: [{ type: "number" }, { type: "null" }] },
+          bbox_px: {
+            type: "object",
+            properties: {
+              x: { type: "number" }, y: { type: "number" },
+              w: { type: "number" }, h: { type: "number" },
+            },
+            required: ["x", "y", "w", "h"],
+            additionalProperties: false,
+          },
+          contents: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                width_cm: { type: "number" },
+                depth_cm: { type: "number" },
+                height_cm: { type: "number" },
+                x_cm: { type: "number" },
+                y_cm: { type: "number" },
+                angle_deg: { type: "number" },
+              },
+              required: ["name", "width_cm", "depth_cm", "height_cm", "x_cm", "y_cm", "angle_deg"],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ["name", "width_cm", "depth_cm", "height_cm", "bbox_px", "contents"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["rooms"],
+  additionalProperties: false,
+};
+
+function aiPrompt(w, h) {
+  return `This image is an architectural floor plan (${w}×${h} pixels). Extract every enclosed room or labeled space: bedrooms, living room, kitchen, bathroom, foyer, hallways, closets, and so on.
+
+For each room report:
+- name: the label written on the plan when present; make names unique (e.g. "Bedroom 1", "Bedroom 2"). Unlabeled enclosed spaces get a sensible name.
+- width_cm: the interior extent along the image X axis, in centimetres. depth_cm: the interior extent along the image Y axis. Use the dimensions printed on the plan when available (convert feet-inches such as 12'-7" to centimetres, and match each printed dimension to the correct axis as drawn). For unlabeled spaces, estimate from the drawing scale implied by the labeled rooms.
+- height_cm: the ceiling height ONLY if the plan explicitly states one; otherwise null.
+- bbox_px: the pixel bounding box (x, y = top-left corner; w, h) of the room's interior floor area in this image.
+- contents: fixtures and furniture drawn inside the room — toilets, sinks, bathtubs, showers, kitchen counters, stoves, fridges, beds, sofas, tables, wardrobes, washing machines, etc. Ignore doors, door swings, windows, and dimension/text annotations. For each item:
+  - width_cm / depth_cm: its footprint extent along the image X / Y axis as drawn, using realistic real-world sizes.
+  - height_cm: a typical real-world height for that kind of item (e.g. countertop ~90, toilet ~75, bed ~55, table ~75).
+  - x_cm / y_cm: the position of the item's centre, measured from the room's interior top-left corner (x to the right, y downward).
+  - angle_deg: 0 for items drawn axis-aligned (nearly all of them); otherwise the clockwise rotation.
+
+All lengths in centimetres. Be faithful to the plan: report only rooms and items that are actually drawn.`;
+}
+
+async function analyzeBlueprint(img, key) {
+  const body = {
+    model: AI_MODEL,
+    max_tokens: 16000,
+    thinking: { type: "adaptive" },
+    output_config: { format: { type: "json_schema", schema: AI_SCHEMA } },
+    messages: [{
+      role: "user",
+      content: [
+        { type: "image", source: { type: "base64", media_type: "image/jpeg", data: img.b64 } },
+        { type: "text", text: aiPrompt(img.w, img.h) },
+      ],
+    }],
+  };
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify(body),
+  });
+  let data = null;
+  try { data = await resp.json(); } catch (e) {}
+  if (!resp.ok) {
+    if (resp.status === 401) {
+      aiKeySession = null;
+      try { localStorage.removeItem(AI_KEY_LS); } catch (e) {}
+      throw new Error("the API key was rejected — click “🔑 Key” and enter a valid Anthropic API key (or ask the admin to update it)");
+    }
+    throw new Error((data && data.error && data.error.message) || ("API error " + resp.status));
+  }
+  if (data.stop_reason === "refusal") throw new Error("the model declined to analyze this image");
+  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+  if (data.stop_reason === "max_tokens" || !text) throw new Error("the response was incomplete — try again or use a simpler image");
+  return JSON.parse(text);
+}
+
+function uniqueRoomName(base) {
+  let n = base, i = 2;
+  while (ws.rooms.some(r => r.name === n)) n = base + " " + (i++);
+  return n;
+}
+function aiColor(name) {
+  const n = name.toLowerCase();
+  const map = [
+    [/toilet|wc\b/, "#8fb4d9"], [/sink|basin|vanit/, "#9fc4e0"], [/bath|shower|tub/, "#7fb8d4"],
+    [/stove|oven|range|cooktop/, "#d9a06b"], [/fridge|refrigerator/, "#b8c4cc"],
+    [/counter|cabinet|island/, "#c9b58f"], [/bed/, "#b49fd9"], [/sofa|couch/, "#9fd9b4"],
+    [/table|desk/, "#d9c98f"], [/wardrobe|closet|dresser|shel/, "#c4a9d9"], [/wash|dryer|machine/, "#a9c4d9"],
+  ];
+  for (const [re, c] of map) if (re.test(n)) return c;
+  return "#7aa2d6";
+}
+
+/* Turn the analysis into rooms + placed objects. Each room is created at the
+   spot its interior occupies in the image (scaled to cm), so attaching the
+   image as that room's blueprint lines it up automatically. */
+function applyAiResult(res, imgDataUrl) {
+  const rooms = (res && Array.isArray(res.rooms)) ? res.rooms : [];
+  if (!rooms.length) throw new Error("no rooms were detected in the image");
+  const stdH = ws.units === "in" ? 244 : 250;   // standard ceiling: 8 ft / 250 cm
+  const created = [];
+  let objCount = 0;
+  for (const rm of rooms) {
+    const w = Math.min(Math.max(Math.round(rm.width_cm) || 0, 30), 10000);
+    const d = Math.min(Math.max(Math.round(rm.depth_cm) || 0, 30), 10000);
+    const bb = rm.bbox_px || {};
+    const sx = bb.w > 0 ? rm.width_cm / bb.w : 0;
+    const sy = bb.h > 0 ? rm.depth_cm / bb.h : 0;
+    const cmPerPx = (sx && sy) ? (sx + sy) / 2 : (sx || sy || 1);
+    const ox = Math.round((bb.x || 0) * cmPerPx), oy = Math.round((bb.y || 0) * cmPerPx);
+    const r = {
+      id: uid(),
+      name: uniqueRoomName(String(rm.name || "Room").trim() || "Room"),
+      height: rm.height_cm > 0 ? Math.round(rm.height_cm) : stdH,
+      base: 0,
+      poly: [{ x: ox, y: oy }, { x: ox + w, y: oy }, { x: ox + w, y: oy + d }, { x: ox, y: oy + d }],
+      blueprint: { data: imgDataUrl, cmPerPx, opacity: (+bpOpacity.value || 45) / 100 },
+    };
+    ws.rooms.push(r);
+    created.push(r);
+    for (const it of (Array.isArray(rm.contents) ? rm.contents : [])) {
+      const cx2 = Number.isFinite(it.x_cm) ? it.x_cm : w / 2;
+      const cy2 = Number.isFinite(it.y_cm) ? it.y_cm : d / 2;
+      ws.objects.push({
+        id: uid(),
+        name: String(it.name || "Item").trim() || "Item",
+        w: Math.min(Math.max(Math.round(it.width_cm) || 1, 1), 10000),
+        d: Math.min(Math.max(Math.round(it.depth_cm) || 1, 1), 10000),
+        h: Math.min(Math.max(Math.round(it.height_cm) || 0, 0), 2000),
+        color: aiColor(String(it.name || "")),
+        state: "placed", roomId: r.id,
+        x: ox + Math.round(cx2), y: oy + Math.round(cy2),
+        angle: ((Math.round(it.angle_deg) || 0) % 360 + 360) % 360,
+        elev: 0, hasPose: true, locked: false, priority: 5,
+      });
+      objCount++;
+    }
+  }
+  if (pendingId) cancelPending();
+  selectedId = null; selEdge = null;
+  ws.currentRoomId = created[0].id;
+  fitView(); save(); renderSidebar();
+  setStatus("✨ Imported " + created.length + " room" + (created.length === 1 ? "" : "s") + " and " +
+            objCount + " object" + (objCount === 1 ? "" : "s") + " from the blueprint — sizes and positions are estimates; adjust as needed (Ctrl+Z undoes the import).");
+}
+
+aiKeyBtn.onclick = () => getAiKey(true);
+aiImportBtn.onclick = () => aiFile.click();
+aiFile.onchange = async () => {
+  const f = aiFile.files[0];
+  aiFile.value = "";
+  if (!f) return;
+  const key = await getAiKey(false);
+  if (!key) { setStatus("Auto-import cancelled — no API key."); return; }
+  aiImportBtn.disabled = true;
+  setStatus("✨ Analyzing the blueprint — this can take a minute…");
+  try {
+    const dataUrl = await new Promise((res, rej) => {
+      const rd = new FileReader();
+      rd.onload = () => res(rd.result);
+      rd.onerror = () => rej(new Error("could not read the file"));
+      rd.readAsDataURL(f);
+    });
+    const img = await prepareAiImage(dataUrl);
+    const result = await analyzeBlueprint(img, key);
+    applyAiResult(result, img.dataUrl);
+  } catch (e) {
+    console.error("AI blueprint import failed", e);
+    setStatus("");
+    alert("Auto-import failed: " + (e && e.message ? e.message : e));
+  }
+  aiImportBtn.disabled = false;
+};
+
+/* ---------- resizable, dockable panels ----------
+   Every left-panel section ("pane") can be dragged by its header to dock
+   against any of the four edges of #main, reordered within a dock, or
+   dropped away from an edge to float freely. Docked panes resize via the
+   browser's native corner/edge grip (CSS `resize`); floating panes resize
+   from any corner the same way. Layout persists in localStorage. */
+const main = document.getElementById("main");
+const floatLayer = document.getElementById("floatLayer");
+const zoneEl = { left: document.getElementById("dockLeft"), right: document.getElementById("dockRight"),
+                 top: document.getElementById("dockTop"), bottom: document.getElementById("dockBottom") };
+const splitEl = { left: document.getElementById("dockLeftSplit"), right: document.getElementById("dockRightSplit"),
+                   top: document.getElementById("dockTopSplit"), bottom: document.getElementById("dockBottomSplit") };
+const paneEls = {};
+document.querySelectorAll(".pane[data-pane]").forEach(p => { paneEls[p.dataset.pane] = p; });
+const DOCK_LS = "rfDockLayout_v2";   // v2: panes are whole panels (sidebar/toolbar/staging), not sidebar sections
+const DEFAULT_DOCK = {
+  zones: { left: ["sidebar"], right: [], top: ["toolbar"], bottom: ["staging"] },
+  sizes: { left: 300, right: 300, top: 54, bottom: 150 },
+};
+function zoneAxis(zone) { return (zone === "left" || zone === "right") ? "column" : "row"; }
+function zoneSizeProp(zone) { return zoneAxis(zone) === "column" ? "width" : "height"; }
+
+function updateZoneVisibility() {
+  /* .children (element-only) is what matters here — CSS `:empty` is unreliable
+     because a zone a pane was moved OUT of keeps the whitespace text nodes from
+     the original markup, so it never actually matches `:empty` */
+  Object.keys(zoneEl).forEach(zone => {
+    const has = zoneEl[zone].children.length > 0;
+    zoneEl[zone].style.display = has ? "" : "none";
+    /* the top zone holds the locked toolbar and is never manually resizable */
+    splitEl[zone].style.display = (has && zone !== "top") ? "block" : "none";
+  });
+}
+
+function moveToZone(pane, zone, beforeEl) {
+  pane.classList.remove("floating");
+  pane.style.position = pane.style.left = pane.style.top = pane.style.width = pane.style.height = "";
+  const el = zoneEl[zone];
+  const wasEmpty = el.children.length === 0;
+  if (beforeEl && beforeEl.parentNode === el) el.insertBefore(pane, beforeEl);
+  else el.appendChild(pane);
+  if (wasEmpty && !el.style[zoneSizeProp(zone)]) el.style[zoneSizeProp(zone)] = DEFAULT_DOCK.sizes[zone] + "px";
+  updateZoneVisibility();
+  resize();
+  scheduleSaveDock();
+}
+
+function makeFloating(pane, x, y, w, h) {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  w = Math.min(Math.max(w, 200), vw - 20);
+  h = Math.min(Math.max(h, 140), vh - 20);
+  x = Math.min(Math.max(x, 0), vw - Math.min(w, 80));
+  y = Math.min(Math.max(y, 0), vh - 30);
+  pane.classList.add("floating");
+  pane.style.left = x + "px"; pane.style.top = y + "px";
+  pane.style.width = w + "px"; pane.style.height = h + "px";
+  floatLayer.appendChild(pane);
+  updateZoneVisibility();
+  resize();
+}
+
+function findBeforeEl(zone, pane, x, y) {
+  const axis = zoneAxis(zone);
+  const kids = Array.from(zoneEl[zone].children).filter(k => k !== pane);
+  for (const k of kids) {
+    const r = k.getBoundingClientRect();
+    const mid = axis === "column" ? (r.top + r.bottom) / 2 : (r.left + r.right) / 2;
+    const pos = axis === "column" ? y : x;
+    if (pos < mid) return k;
+  }
+  return null;
+}
+
+const EDGE_BAND = 60;
+function computeDropTarget(x, y, pane) {
+  for (const zone of ["left", "right", "top", "bottom"]) {
+    const el = zoneEl[zone];
+    if (!el.children.length) continue;
+    const r = el.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+      return { type: "zone", zone, before: findBeforeEl(zone, pane, x, y) };
+    }
+  }
+  const mr = main.getBoundingClientRect();
+  if (x - mr.left <= EDGE_BAND) return { type: "zone", zone: "left", before: null };
+  if (mr.right - x <= EDGE_BAND) return { type: "zone", zone: "right", before: null };
+  if (y - mr.top <= EDGE_BAND) return { type: "zone", zone: "top", before: null };
+  if (mr.bottom - y <= EDGE_BAND) return { type: "zone", zone: "bottom", before: null };
+  return { type: "float" };
+}
+
+function zoneOverlayRect(zone) {
+  const el = zoneEl[zone];
+  if (el.children.length) return el.getBoundingClientRect();
+  const mr = main.getBoundingClientRect();
+  const size = parseInt(el.style[zoneSizeProp(zone)]) || DEFAULT_DOCK.sizes[zone];
+  if (zone === "left") return { left: mr.left, top: mr.top, right: mr.left + size, bottom: mr.bottom, width: size, height: mr.height };
+  if (zone === "right") return { left: mr.right - size, top: mr.top, right: mr.right, bottom: mr.bottom, width: size, height: mr.height };
+  if (zone === "top") return { left: mr.left, top: mr.top, right: mr.right, bottom: mr.top + size, width: mr.width, height: size };
+  return { left: mr.left, top: mr.bottom - size, right: mr.right, bottom: mr.bottom, width: mr.width, height: size };
+}
+
+function startPaneHeaderDrag(pane, downEvt) {
+  if (downEvt.button !== 0 || downEvt.target.closest(".paneMinBtn")) return;
+  downEvt.preventDefault();
+  const startX = downEvt.clientX, startY = downEvt.clientY;
+  const rect = pane.getBoundingClientRect();
+  const offX = startX - rect.left, offY = startY - rect.top;
+  let moved = false, ghost = null, overlays = null, target = null;
+
+  const onMove = mv => {
+    if (!moved) {
+      if (Math.abs(mv.clientX - startX) < 5 && Math.abs(mv.clientY - startY) < 5) return;
+      moved = true;
+      document.body.style.userSelect = "none";
+      pane.classList.add("dockDragging");
+      ghost = document.createElement("div");
+      ghost.className = "dockGhost";
+      ghost.textContent = pane.dataset.title || "Panel";
+      document.body.appendChild(ghost);
+      overlays = {};
+      ["left", "right", "top", "bottom"].forEach(z => {
+        const o = document.createElement("div");
+        o.className = "dockOverlay";
+        document.body.appendChild(o);
+        overlays[z] = o;
+      });
+    }
+    ghost.style.left = mv.clientX + "px";
+    ghost.style.top = mv.clientY + "px";
+    target = computeDropTarget(mv.clientX, mv.clientY, pane);
+    Object.entries(overlays).forEach(([z, o]) => {
+      if (target.type === "zone" && target.zone === z) {
+        const r = zoneOverlayRect(z);
+        o.style.left = r.left + "px"; o.style.top = r.top + "px";
+        o.style.width = r.width + "px"; o.style.height = r.height + "px";
+        o.classList.add("show");
+      } else o.classList.remove("show");
+    });
+  };
+
+  const onUp = mv => {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+    document.body.style.userSelect = "";
+    pane.classList.remove("dockDragging");
+    if (ghost) ghost.remove();
+    if (overlays) Object.values(overlays).forEach(o => o.remove());
+    if (!moved || !target) return;
+    if (target.type === "zone") moveToZone(pane, target.zone, target.before);
+    else makeFloating(pane, mv.clientX - offX, mv.clientY - offY, rect.width, rect.height);
+    scheduleSaveDock();
+  };
+
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+}
+
+/* ---------- minimize (left/bottom panels reclaim canvas space; the locked toolbar has no button at all) ---------- */
+const minimizedZoneSize = {};   // zone -> size ("NNpx") to restore to when un-minimized
+function paneZone(pane) {
+  for (const z of Object.keys(zoneEl)) if (zoneEl[z] === pane.parentElement) return z;
+  return null;
+}
+function setMinimized(pane, minimized) {
+  pane.classList.toggle("minimized", minimized);
+  const btn = pane.querySelector(".paneMinBtn");
+  if (btn) { btn.textContent = minimized ? "+" : "−"; btn.title = minimized ? "Restore this panel" : "Minimize this panel"; }
+
+  if (pane.classList.contains("floating")) {
+    if (minimized) { pane.dataset.restoreH = pane.style.height || "260px"; pane.style.height = "26px"; }
+    else pane.style.height = pane.dataset.restoreH || "260px";
+  } else {
+    const zone = paneZone(pane);
+    if (zone && zoneEl[zone].children.length === 1) {
+      /* sole occupant: shrink the whole zone so the canvas reclaims the space */
+      const prop = zoneSizeProp(zone);
+      zoneEl[zone].classList.toggle("zone-minimized", minimized);
+      if (minimized) {
+        minimizedZoneSize[zone] = zoneEl[zone].style[prop] || (DEFAULT_DOCK.sizes[zone] + "px");
+        zoneEl[zone].style[prop] = "26px";
+      } else {
+        zoneEl[zone].style[prop] = minimizedZoneSize[zone] || (DEFAULT_DOCK.sizes[zone] + "px");
+      }
+    } else if (zone) {
+      /* sharing a zone with other panes: just collapse this pane's own share */
+      const prop = zoneAxis(zone) === "column" ? "height" : "width";
+      if (minimized) { pane.dataset.restoreShare = pane.style[prop] || ""; pane.style[prop] = "26px"; }
+      else pane.style[prop] = pane.dataset.restoreShare || "";
+    }
+  }
+  resize();
+  scheduleSaveDock();
+}
+
+Object.values(paneEls).forEach(pane => {
+  const grip = pane.querySelector(".paneGrip");
+  if (!grip) return;   // the locked toolbar has no grip — it can't be dragged, floated, or minimized
+  grip.addEventListener("mousedown", e => startPaneHeaderDrag(pane, e));
+  const btn = grip.querySelector(".paneMinBtn");
+  if (btn) btn.addEventListener("mousedown", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMinimized(pane, !pane.classList.contains("minimized"));
+  });
+});
+
+document.querySelectorAll(".zsplit").forEach(sp => {
+  const zone = sp.dataset.zone;
+  const axis = zoneAxis(zone);
+  sp.addEventListener("mousedown", e => {
+    e.preventDefault();
+    sp.classList.add("dragging");
+    const startRect = zoneEl[zone].getBoundingClientRect();
+    const move = mv => {
+      let size;
+      if (zone === "left") size = mv.clientX - startRect.left;
+      else if (zone === "right") size = startRect.right - mv.clientX;
+      else if (zone === "top") size = mv.clientY - startRect.top;
+      else size = startRect.bottom - mv.clientY;
+      const min = axis === "column" ? 220 : 44;
+      const max = axis === "column" ? 560 : Math.round(window.innerHeight * 0.7);
+      size = Math.min(Math.max(size, min), max);
+      zoneEl[zone].style[zoneSizeProp(zone)] = size + "px";
+      resize();
+    };
+    const up = () => {
+      sp.classList.remove("dragging");
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      scheduleSaveDock();
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  });
+});
+
+/* native `resize:` corner/edge grips fire no event of their own — watch pane
+   boxes so a manual resize gets persisted */
+const dockResizeObserver = new ResizeObserver(() => scheduleSaveDock());
+Object.values(paneEls).forEach(p => dockResizeObserver.observe(p));
+
+let dockSaveTimer = null;
+function scheduleSaveDock() { clearTimeout(dockSaveTimer); dockSaveTimer = setTimeout(saveDockLayout, 300); }
+function saveDockLayout() {
+  const layout = { zones: {}, sizes: {}, floats: {}, minimized: {}, restoreSizes: Object.assign({}, minimizedZoneSize) };
+  Object.keys(zoneEl).forEach(zone => {
+    layout.zones[zone] = Array.from(zoneEl[zone].children).map(el => el.dataset.pane);
+    layout.sizes[zone] = parseInt(zoneEl[zone].style[zoneSizeProp(zone)]) || DEFAULT_DOCK.sizes[zone];
+  });
+  Array.from(floatLayer.children).forEach(el => {
+    layout.floats[el.dataset.pane] = {
+      x: parseInt(el.style.left) || 0, y: parseInt(el.style.top) || 0,
+      w: parseInt(el.style.width) || 260, h: parseInt(el.style.height) || 220,
+      restoreH: parseInt(el.dataset.restoreH) || null,
+    };
+  });
+  Object.entries(paneEls).forEach(([id, p]) => { if (p.classList.contains("minimized")) layout.minimized[id] = true; });
+  try { localStorage.setItem(DOCK_LS, JSON.stringify(layout)); } catch (e) {}
+}
+
+function applyDockLayout(layout) {
+  Object.keys(zoneEl).forEach(zone => {
+    zoneEl[zone].classList.remove("zone-minimized");
+    (layout.zones && layout.zones[zone] || []).forEach(id => {
+      const pane = paneEls[id];
+      if (!pane) return;
+      pane.classList.remove("floating", "minimized");
+      pane.style.position = pane.style.left = pane.style.top = pane.style.width = pane.style.height = "";
+      const btn = pane.querySelector(".paneMinBtn");
+      if (btn) { btn.textContent = "−"; btn.title = "Minimize this panel"; }
+      zoneEl[zone].appendChild(pane);
+    });
+    const size = layout.sizes && layout.sizes[zone];
+    if (size) zoneEl[zone].style[zoneSizeProp(zone)] = size + "px";
+  });
+  Object.entries(layout.floats || {}).forEach(([id, f]) => {
+    const pane = paneEls[id];
+    if (!pane) return;
+    pane.classList.remove("minimized");
+    makeFloating(pane, f.x, f.y, f.w, f.h);
+    if (f.restoreH) pane.dataset.restoreH = f.restoreH + "px"; else delete pane.dataset.restoreH;
+  });
+  Object.assign(minimizedZoneSize, layout.restoreSizes || {});
+  Object.entries(layout.minimized || {}).forEach(([id, v]) => {
+    const pane = paneEls[id];
+    if (!pane || !v) return;
+    pane.classList.add("minimized");
+    const btn = pane.querySelector(".paneMinBtn");
+    if (btn) { btn.textContent = "+"; btn.title = "Restore this panel"; }
+    if (pane.classList.contains("floating")) return;   // already sized via layout.floats[id].h
+    const zone = paneZone(pane);
+    if (zone && zoneEl[zone].children.length === 1) zoneEl[zone].classList.add("zone-minimized");
+  });
+  updateZoneVisibility();
+  resize();
+}
+
+function loadDockLayout() {
+  let layout = null;
+  try { layout = JSON.parse(localStorage.getItem(DOCK_LS)); } catch (e) {}
+  const knownIds = Object.keys(paneEls);
+  const savedIds = layout && layout.zones
+    ? [].concat(...Object.values(layout.zones), Object.keys(layout.floats || {}))
+    : [];
+  /* a saved layout that names none of today's panes is from an incompatible,
+     stale scheme (e.g. an older version of this file) — start clean instead
+     of dumping every current pane into "left" trying to reconcile it */
+  if (!layout || !layout.zones || !savedIds.some(id => knownIds.includes(id))) {
+    layout = {
+      zones: { left: DEFAULT_DOCK.zones.left.slice(), right: DEFAULT_DOCK.zones.right.slice(),
+               top: DEFAULT_DOCK.zones.top.slice(), bottom: DEFAULT_DOCK.zones.bottom.slice() },
+      sizes: Object.assign({}, DEFAULT_DOCK.sizes), floats: {},
+    };
+    const oldW = +localStorage.getItem("rfSidebarW");
+    if (oldW >= 220 && oldW <= 560) layout.sizes.left = oldW;
+  }
+  Object.keys(paneEls).forEach(id => {
+    const isPlaced = Object.values(layout.zones).some(list => list.includes(id)) || (layout.floats && layout.floats[id]);
+    if (!isPlaced) (layout.zones.left = layout.zones.left || []).push(id);
+  });
+  applyDockLayout(layout);
+}
+
+document.getElementById("resetLayoutBtn").onclick = () => {
+  Object.values(paneEls).forEach(p => {
+    p.classList.remove("floating", "minimized");
+    p.style.position = p.style.left = p.style.top = p.style.width = p.style.height = "";
+  });
+  Object.values(zoneEl).forEach(z => { z.style.width = ""; z.style.height = ""; z.classList.remove("zone-minimized"); });
+  Object.keys(minimizedZoneSize).forEach(k => delete minimizedZoneSize[k]);
+  applyDockLayout(DEFAULT_DOCK);
+  saveDockLayout();
+  setStatus("Layout reset to default.");
+};
+
+/* Enter inside any panel field applies the edit right away
+   (blur fires the field's onchange — no need to tab away) */
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.ctrlKey && e.target.tagName === "INPUT" && e.target.closest(".pane")) {
+    e.preventDefault();
+    e.target.blur();
+  }
+});
+
+/* ---------- hint line ---------- */
+const hint = document.getElementById("hint");
+setInterval(() => {
+  if (mode === "draw") hint.textContent = "Draw mode: click corners · Ctrl snaps to right angles · click the green first corner / Enter to close · right-click removes last corner · Esc exits";
+  else if (mode === "calibrate") hint.textContent = "Calibrate: click two points with a known real-world distance";
+  else if (floatingId) hint.textContent = "Repositioning: move the mouse, click to drop, click again while green to confirm";
+  else if (pendingId) hint.textContent = "Green = fits (click object to confirm) · Red = blocked · R rotates · Esc/right-click cancels";
+  else hint.textContent = "Drag objects (to move, or onto the shelf to stage; hold Ctrl to snap edges) · Shift+drag pushes a wall/side · Alt+drag raises/lowers · dbl-click an object renames it, a wall adds a corner · right-click for menus";
+}, 250);
+
+/* ---------- boot ---------- */
+load();
+lastState = JSON.stringify(ws);
+setViewMode(flatView, true);
+updateUserUi();
+loadDockLayout();
+resize();
+fitView();
+renderSidebar();
+updateUndoButtons();
+initFS();
+resumeCloudSession();
+try { if (!localStorage.getItem(GUIDE_LS)) openGuide(); } catch (e) {}
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
