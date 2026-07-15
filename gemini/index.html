@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gemini Chat → HTML</title>
+<meta name="description" content="Paste a Gemini share link and download the whole conversation as a clean standalone HTML file.">
+<style>
+  :root {
+    --bg: #06060e;
+    --card: #10101c;
+    --text: #ececf6;
+    --muted: #a6a6c4;
+    --accent: #bda9ff;
+    --border: rgba(255,255,255,0.09);
+    --glass: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.11);
+    --user-bubble: rgba(124,131,253,0.15);
+    --code-bg: rgba(255,255,255,0.07);
+    --error: #ff9b8f;
+    --ok: #83e6ab;
+    --grad: linear-gradient(120deg, #7c83fd 0%, #a855f7 45%, #22d3ee 100%);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* animated aurora backdrop */
+  .aurora {
+    position: fixed; inset: -25%; z-index: -2; pointer-events: none;
+    background:
+      radial-gradient(38% 52% at 18% 12%, rgba(124,131,253,0.38), transparent 62%),
+      radial-gradient(44% 54% at 84% 18%, rgba(168,85,247,0.32), transparent 62%),
+      radial-gradient(50% 60% at 76% 84%, rgba(34,211,238,0.24), transparent 62%),
+      radial-gradient(46% 56% at 20% 88%, rgba(236,72,153,0.20), transparent 62%);
+    filter: blur(34px) saturate(135%);
+    animation: drift 26s ease-in-out infinite alternate;
+  }
+  @keyframes drift {
+    0%   { transform: translate3d(0,0,0) scale(1); }
+    50%  { transform: translate3d(2.2%,-1.6%,0) scale(1.09); }
+    100% { transform: translate3d(-2.2%,1.6%,0) scale(1.04); }
+  }
+  body::before {   /* faint star field */
+    content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+    background-image: radial-gradient(rgba(255,255,255,0.5) 1px, transparent 1.4px);
+    background-size: 48px 48px; opacity: .10;
+    -webkit-mask-image: radial-gradient(circle at 50% 32%, #000 35%, transparent 82%);
+            mask-image: radial-gradient(circle at 50% 32%, #000 35%, transparent 82%);
+  }
+  body::after {    /* vignette for depth */
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(125% 90% at 50% -12%, transparent 42%, rgba(0,0,0,0.6) 100%);
+  }
+
+  .wrap { max-width: 820px; margin: 0 auto; padding: clamp(46px,8vh,92px) 22px 96px; position: relative; }
+
+  /* hero */
+  .hero { text-align: center; margin-bottom: 42px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: .72rem; font-weight: 600; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--muted); padding: 7px 15px; border-radius: 999px;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    margin-bottom: 24px;
+  }
+  .eyebrow .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: linear-gradient(#7c83fd, #22d3ee); box-shadow: 0 0 10px #7c83fd;
+    animation: pulse 2.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
+  h1.title {
+    font-size: clamp(2.3rem, 6.5vw, 3.7rem);
+    line-height: 1.04; margin: 0 0 18px; font-weight: 800; letter-spacing: -0.022em;
+    background: linear-gradient(115deg, #ffffff 12%, #cdb8ff 38%, #8ee7ff 68%, #ffffff 96%);
+    background-size: 220% auto;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: shimmer 9s linear infinite;
+  }
+  @keyframes shimmer { to { background-position: 220% center; } }
+  .spark {
+    display: inline-block;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 15px rgba(124,131,253,.75));
+    animation: spin 9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sub { color: var(--muted); font-size: clamp(1rem, 2.3vw, 1.16rem); max-width: 630px; margin: 0 auto 28px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .badge {
+    font-size: .82rem; color: var(--text);
+    padding: 8px 15px; border-radius: 999px;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+
+  /* glass cards */
+  .card {
+    position: relative;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 26px;
+    -webkit-backdrop-filter: blur(16px) saturate(120%); backdrop-filter: blur(16px) saturate(120%);
+    box-shadow: 0 24px 60px -24px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .card::before {   /* gradient hairline edge */
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: linear-gradient(120deg, rgba(124,131,253,.6), rgba(34,211,238,.28) 45%, transparent 70%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity: .85; pointer-events: none;
+  }
+  .focus-card { box-shadow: 0 30px 80px -30px rgba(124,131,253,.5), inset 0 1px 0 rgba(255,255,255,.07); }
+  .card a { color: var(--accent); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  input[type=url] {
+    flex: 1 1 320px;
+    padding: 15px 16px; font-size: 1rem;
+    border: 1px solid var(--glass-border); border-radius: 13px;
+    background: rgba(0,0,0,.28); color: var(--text); outline: none;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+  }
+  input[type=url]::placeholder { color: #7c7c98; }
+  input[type=url]:focus {
+    border-color: rgba(124,131,253,.85);
+    box-shadow: 0 0 0 4px rgba(124,131,253,.18), 0 0 30px -6px rgba(124,131,253,.55);
+    background: rgba(0,0,0,.4);
+  }
+  button {
+    padding: 15px 26px; font-size: 1rem; font-weight: 700;
+    border: none; border-radius: 13px; cursor: pointer; color: #0b0b16;
+    background: var(--grad); background-size: 170% auto;
+    box-shadow: 0 12px 30px -12px rgba(124,131,253,.75);
+    transition: transform .15s, box-shadow .2s, background-position .5s, filter .2s;
+  }
+  button:hover { transform: translateY(-2px); background-position: right center; box-shadow: 0 16px 40px -12px rgba(124,131,253,.9); }
+  button:active { transform: translateY(0); }
+  button:disabled { opacity: .5; cursor: default; transform: none; box-shadow: none; filter: grayscale(.35); }
+  button.secondary {
+    background: var(--glass); color: var(--text);
+    border: 1px solid var(--glass-border); box-shadow: none;
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  button.secondary:hover { border-color: rgba(124,131,253,.6); background: rgba(124,131,253,.13); transform: translateY(-1px); }
+
+  .status { margin-top: 16px; font-size: .95rem; min-height: 1.4em; color: var(--muted); }
+  .status.error { color: var(--error); }
+  .status.ok { color: var(--ok); }
+  .hint { color: var(--muted); font-size: .85rem; margin-top: 14px; }
+  .hint a { color: var(--accent); }
+  .hidden { display: none !important; }
+
+  #result { margin-top: 30px; }
+  #resultBar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  #resultTitle { font-weight: 700; flex: 1 1 200px; font-size: 1.05rem; }
+  #preview {
+    border: 1px solid var(--glass-border); border-radius: 18px;
+    background: rgba(0,0,0,.25); max-height: 60vh; overflow: auto;
+    padding: 6px 24px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  #preview::-webkit-scrollbar { width: 10px; }
+  #preview::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 10px; }
+
+  /* conversation preview */
+  .turn { margin: 24px 0; }
+  .who {
+    font-size: .72rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .user-msg {
+    background: var(--user-bubble); border: 1px solid rgba(124,131,253,.22);
+    border-radius: 14px; padding: 13px 16px; white-space: pre-wrap; overflow-wrap: break-word;
+  }
+  .gemini-msg { overflow-wrap: break-word; }
+  .gemini-msg pre {
+    background: var(--code-bg); border: 1px solid var(--glass-border);
+    border-radius: 10px; padding: 12px 14px; overflow-x: auto;
+  }
+  .gemini-msg code { background: var(--code-bg); border-radius: 4px; padding: .1em .3em; font-size: .92em; }
+  .gemini-msg pre code { background: none; padding: 0; }
+  .gemini-msg table { border-collapse: collapse; margin: 12px 0; display: block; overflow-x: auto; }
+  .gemini-msg th, .gemini-msg td { border: 1px solid var(--glass-border); padding: 6px 12px; text-align: left; }
+  .gemini-msg img { max-width: 100%; border-radius: 8px; }
+  .gemini-msg a { color: var(--accent); }
+  .gemini-msg blockquote { border-left: 3px solid var(--glass-border); margin-left: 0; padding-left: 14px; color: var(--muted); }
+
+  /* device method accordions */
+  .aimode-title { margin: 0 0 6px; font-size: 1.3rem; font-weight: 800; letter-spacing: -.01em; }
+  .method {
+    border: 1px solid var(--glass-border); border-radius: 14px; margin: 12px 0; overflow: hidden;
+    background: rgba(255,255,255,.025); transition: border-color .2s, background .2s;
+  }
+  .method[open] { background: rgba(255,255,255,.045); }
+  .method:hover { border-color: rgba(124,131,253,.42); }
+  .method > summary {
+    cursor: pointer; padding: 15px 18px; font-size: 1rem; list-style: none; user-select: none;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .method > summary::-webkit-details-marker { display: none; }
+  .method > summary::after { content: "+"; margin-left: auto; color: var(--muted); font-size: 1.3rem; line-height: 1; transition: transform .2s; }
+  .method[open] > summary::after { content: "\2013"; }
+  .method-body { padding: 4px 20px 18px; font-size: .93rem; color: var(--muted); }
+  .method-body b { color: var(--text); }
+  .method-body ol { padding-left: 20px; } .method-body li { margin: 9px 0; }
+  .method-body code, .card code { background: var(--code-bg); border-radius: 5px; padding: .12em .4em; font-size: .85em; color: #d9d2ff; }
+
+  /* entrance */
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  .reveal { opacity: 0; animation: rise .7s cubic-bezier(.2,.7,.2,1) forwards; }
+  .reveal.d1 { animation-delay: .06s; }
+  .reveal.d2 { animation-delay: .16s; }
+  .reveal.d3 { animation-delay: .28s; }
+
+  @media (max-width: 520px) {
+    #go { width: 100%; }
+    .card { padding: 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .aurora, .spark, h1.title, .eyebrow .dot { animation: none !important; }
+    .reveal { opacity: 1; animation: none !important; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"></div>
+<div class="wrap">
+  <header class="hero reveal">
+    <span class="eyebrow"><span class="dot"></span> Google AI → HTML</span>
+    <h1 class="title"><span class="spark">✦</span> Save any Gemini chat<br>as a file you own</h1>
+    <p class="sub">Turn a Google AI conversation into one clean HTML file that opens anywhere, forever — no account, no sign-in, nothing to install. Paste a Gemini share link, or grab an “AI&nbsp;Mode” chat with the one-tap tools below.</p>
+    <div class="badges">
+      <span class="badge">✨ No account</span>
+      <span class="badge">📄 One HTML file</span>
+      <span class="badge">📴 Opens offline</span>
+      <span class="badge">🔒 Runs in your browser</span>
+    </div>
+  </header>
+
+  <div class="card focus-card reveal d1">
+    <div class="row">
+      <input id="link" type="url" placeholder="https://gemini.google.com/share/…  or  https://g.co/gemini/share/…"
+             autocomplete="off" spellcheck="false">
+      <button id="go">Convert</button>
+    </div>
+    <div id="status" class="status"></div>
+    <div class="hint">
+      Works with public share links only (in Gemini: <b>Share &amp; export → Share → Create link</b>).
+      The page is fetched and rendered through the free <a href="https://jina.ai/reader" target="_blank" rel="noopener">Jina Reader</a> service, so very heavy use may hit its rate limit — if that happens, wait a minute and retry.
+    </div>
+  </div>
+
+  <div id="result" class="hidden">
+    <div id="resultBar">
+      <span id="resultTitle"></span>
+      <button id="download">Download HTML</button>
+      <button id="openTab" class="secondary">Open in new tab</button>
+    </div>
+    <div id="preview"></div>
+  </div>
+
+  <div class="card reveal d3" id="aimodeCard" style="margin-top:26px">
+    <h2 class="aimode-title">Google “AI Mode” chats <span style="color:var(--muted);font-weight:600;font-size:.85rem">(share.google/aimode/…)</span></h2>
+    <p style="margin:0 0 18px; color:var(--muted); font-size:.95rem">
+      Google blocks tools from reading AI&nbsp;Mode pages remotely, so those links can't be pasted above.
+      Instead you run a tiny snippet <i>on the page itself</i>. Pick the setup for your device — you only do it once.
+    </p>
+
+    <details open class="method">
+      <summary><b>💻 Computer</b> — drag to bookmarks bar</summary>
+      <div class="method-body">
+        <p>Drag this button onto your browser's <b>bookmarks bar</b> (press <b>Ctrl+Shift+B</b> / <b>⌘+Shift+B</b> if it's hidden):</p>
+        <a id="bookmarklet" href="#"
+           style="display:inline-block; padding:12px 20px; border-radius:12px; background:var(--grad); background-size:170% auto; color:#0b0b16; font-weight:700; text-decoration:none; box-shadow:0 12px 30px -12px rgba(124,131,253,.75); cursor:grab"
+           onclick="return false;" title="Drag me onto your bookmarks bar">✦ Save AI chat</a>
+        <p class="hint">Then open any AI&nbsp;Mode chat (or Gemini share page), let it finish loading, and click the bookmark — the HTML downloads instantly.</p>
+      </div>
+    </details>
+
+    <details class="method">
+      <summary><b>📱 iPhone / iPad</b> — Shortcut from the Share menu</summary>
+      <div class="method-body">
+        <ol>
+          <li>Open the <b>Shortcuts</b> app → <b>＋</b> → <b>Add Action</b>.</li>
+          <li>Search for <b>“Run JavaScript on Web Page”</b> and add it. Tap the script box, delete the sample, and paste the code you copy here:
+            <div style="margin:8px 0"><button id="copyIosJs" class="secondary" type="button">Copy the iPhone code</button> <span id="copyIosMsg" class="hint" style="margin:0"></span></div>
+          </li>
+          <li>Below it add two more actions: <b>“Save File”</b> (turn <i>Ask Where to Save</i> on so you can pick Files, or off to dump into iCloud/Downloads). The file's contents are the JavaScript result; set the extension to <b>.html</b> if asked.</li>
+          <li>Name the shortcut e.g. <b>Save AI chat</b>, and make sure <b>“Show in Share Sheet”</b> is ON (shortcut settings), with <b>Safari web pages</b> allowed as input.</li>
+          <li>To use it: open the chat in <b>Safari</b>, let it load, tap <b>Share</b> → <b>Save AI chat</b>. Done.</li>
+        </ol>
+        <p class="hint">If it saves a file containing only <code>NO_CONVERSATION_FOUND</code>, the page hadn't finished loading — scroll to the bottom of the chat and run it again.</p>
+      </div>
+    </details>
+
+    <details class="method">
+      <summary><b>🤖 Android</b> — saved-bookmark trick</summary>
+      <div class="method-body">
+        <ol>
+          <li>Copy the snippet: <div style="margin:8px 0"><button id="copyBmUrl" class="secondary" type="button">Copy the Android code</button> <span id="copyBmMsg" class="hint" style="margin:0"></span></div></li>
+          <li>In <b>Chrome</b>, bookmark any page (tap ☆). Then open <b>⋮ → Bookmarks</b>, tap-and-hold that bookmark → <b>Edit</b>.</li>
+          <li>Set <b>Name</b> to <code>saveai</code> and paste the copied snippet into the <b>URL</b> field. Save.</li>
+          <li>To use it: open the AI&nbsp;Mode chat, let it load, tap the <b>address bar</b>, type <code>saveai</code>, and tap the bookmark suggestion that appears. It runs on the current page and downloads the HTML.</li>
+        </ol>
+        <p class="hint">Firefox for Android works the same way. (Chrome strips <code>javascript:</code> when you <i>type</i> it directly, which is why it has to live in a saved bookmark.)</p>
+      </div>
+    </details>
+
+    <details class="method">
+      <summary><b>🆘 Any phone, zero setup</b> — Print → PDF</summary>
+      <div class="method-body">
+        <p>Not HTML, but instant: open the chat, choose <b>Share → Print</b>, then pinch-zoom the preview and tap the <b>share/save</b> icon to <b>Save as PDF</b>. Captures the whole conversation for archiving.</p>
+      </div>
+    </details>
+  </div>
+</div>
+
+<script>
+const GeminiExport = {
+
+  // Accepts full share URLs, g.co short links, or a bare share id.
+  normalizeLink(raw) {
+    raw = (raw || '').trim();
+    let m = raw.match(/(?:gemini\.google\.com\/share|g\.co\/gemini\/share)\/([A-Za-z0-9_-]+)/);
+    if (!m) m = raw.match(/^([A-Za-z0-9]{8,20})$/);
+    return m ? 'https://gemini.google.com/share/' + m[1] : null;
+  },
+
+  ALLOWED_TAGS: new Set(['P','DIV','SPAN','UL','OL','LI','PRE','CODE','TABLE','THEAD','TBODY','TFOOT','TR','TH','TD','H1','H2','H3','H4','H5','H6','STRONG','B','EM','I','U','S','A','IMG','BLOCKQUOTE','BR','HR','SUP','SUB']),
+  DROP_TAGS: new Set(['SCRIPT','STYLE','NOSCRIPT','SVG','BUTTON','MAT-ICON','INPUT','TEXTAREA','SELECT','IFRAME','CANVAS','AUDIO','VIDEO','SOURCES-CAROUSEL','SOURCES-CAROUSEL-INLINE','MESSAGE-ACTIONS','TTS-CONTROL','SENSITIVE-MEMORIES-BANNER','HALLUCINATION-DISCLAIMER']),
+  DROP_SELECTORS: 'button, mat-icon, [class*="code-block-decoration"], [class*="copy-button"], [class*="response-footer"], sources-carousel, sources-carousel-inline, message-actions, tts-control',
+
+  // Rebuild an element's content keeping only simple, self-contained HTML.
+  sanitizeInto(source, targetDoc) {
+    const out = targetDoc.createElement('div');
+    const walk = (srcNode, dst) => {
+      for (const child of Array.from(srcNode.childNodes)) {
+        if (child.nodeType === 3) {                     // text
+          dst.appendChild(targetDoc.createTextNode(child.nodeValue));
+          continue;
+        }
+        if (child.nodeType !== 1) continue;             // skip comments etc.
+        const tag = child.tagName.toUpperCase();
+        if (this.DROP_TAGS.has(tag)) continue;
+        if (!this.ALLOWED_TAGS.has(tag)) {              // unknown wrapper → unwrap
+          walk(child, dst);
+          continue;
+        }
+        const el = targetDoc.createElement(tag);
+        if (tag === 'A') {
+          const href = child.getAttribute('href');
+          if (href && !href.startsWith('javascript:')) {
+            el.setAttribute('href', href);
+            el.setAttribute('target', '_blank');
+            el.setAttribute('rel', 'noopener');
+          }
+        }
+        if (tag === 'IMG') {
+          const src = child.getAttribute('src') || '';
+          if (!/^https?:/.test(src)) continue;          // blob:/data: won't survive export
+          el.setAttribute('src', src);
+          if (child.getAttribute('alt')) el.setAttribute('alt', child.getAttribute('alt'));
+        }
+        for (const attr of ['colspan', 'rowspan']) {
+          if (child.getAttribute(attr)) el.setAttribute(attr, child.getAttribute(attr));
+        }
+        walk(child, el);
+        if (tag === 'SPAN' || tag === 'DIV') {          // keep only wrappers that carry content
+          if (!el.textContent.trim() && !el.querySelector('img,br,hr')) continue;
+        }
+        dst.appendChild(el);
+      }
+    };
+    walk(source, out);
+    return out;
+  },
+
+  // doc: DOM Document of the rendered share page. Returns {title, meta, turns:[{user, responseHtml}]}
+  parse(doc, targetDoc) {
+    targetDoc = targetDoc || doc;
+    for (const junk of doc.querySelectorAll(this.DROP_SELECTORS)) junk.remove();
+
+    const turns = [];
+    for (const tv of doc.querySelectorAll('share-turn-viewer')) {
+      const q = tv.querySelector('user-query');
+      let user = '';
+      if (q) {
+        const lines = q.querySelectorAll('.query-text-line');
+        user = lines.length
+          ? Array.from(lines).map(l => l.textContent.trim()).join('\n')
+          : (q.querySelector('.query-text') || q).textContent.trim();
+      }
+      const parts = tv.querySelectorAll('message-content');
+      let responseHtml = '';
+      for (const mc of parts) responseHtml += this.sanitizeInto(mc, targetDoc).innerHTML;
+      if (user || responseHtml) turns.push({ user, responseHtml });
+    }
+
+    let title = '';
+    const h1 = doc.querySelector('share-landing-page h1, share-viewer h1, h1');
+    if (h1) title = h1.textContent.trim();
+    if (!title || /direct access to google ai/i.test(title)) title = 'Gemini conversation';
+
+    const clean = el => el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+    const created = doc.querySelector('[data-test-id*="created-with"]');
+    const meta = [clean(created && created.parentElement), clean(doc.querySelector('.publish-time-text'))]
+      .filter(Boolean).join(' · ');
+    return { title, meta, turns };
+  },
+
+  escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  },
+
+  turnsToHtml(turns) {
+    return turns.map(t => {
+      let s = '';
+      if (t.user) {
+        s += '<div class="turn"><div class="who">You</div><div class="user-msg">' + this.escapeHtml(t.user) + '</div></div>';
+      }
+      if (t.responseHtml) {
+        s += '<div class="turn"><div class="who">✦ Gemini</div><div class="gemini-msg">' + t.responseHtml + '</div></div>';
+      }
+      return s;
+    }).join('\n');
+  },
+
+  EXPORT_CSS: `
+  body { margin:0; font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif; line-height:1.6;
+         background:#f6f7fb; color:#1b1c1f; }
+  @media (prefers-color-scheme: dark) { body { background:#131418; color:#e8eaed; } }
+  .wrap { max-width:760px; margin:0 auto; padding:36px 20px 80px; }
+  header { border-bottom:1px solid rgba(128,128,128,.35); padding-bottom:16px; margin-bottom:10px; }
+  h1.chat-title { font-size:1.6rem; margin:0 0 8px; }
+  .meta { color:#5f6368; font-size:.88rem; } @media (prefers-color-scheme: dark) { .meta { color:#9aa0a6; } }
+  .meta a { color:inherit; }
+  .turn { margin:26px 0; }
+  .who { font-size:.8rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+         color:#5f6368; margin-bottom:6px; }
+  @media (prefers-color-scheme: dark) { .who { color:#9aa0a6; } }
+  .user-msg { background:#e8f0fe; border-radius:14px; padding:12px 16px; white-space:pre-wrap; overflow-wrap:break-word; }
+  @media (prefers-color-scheme: dark) { .user-msg { background:#263041; } }
+  .gemini-msg { overflow-wrap:break-word; }
+  .gemini-msg pre { background:rgba(128,128,128,.12); border:1px solid rgba(128,128,128,.3);
+                    border-radius:10px; padding:12px 14px; overflow-x:auto; }
+  .gemini-msg code { background:rgba(128,128,128,.12); border-radius:4px; padding:.1em .3em; font-size:.92em; }
+  .gemini-msg pre code { background:none; padding:0; }
+  .gemini-msg table { border-collapse:collapse; margin:12px 0; display:block; overflow-x:auto; }
+  .gemini-msg th, .gemini-msg td { border:1px solid rgba(128,128,128,.4); padding:6px 12px; text-align:left; }
+  .gemini-msg img { max-width:100%; border-radius:8px; }
+  .gemini-msg blockquote { border-left:3px solid rgba(128,128,128,.4); margin-left:0; padding-left:14px; }
+  @media print { .user-msg { border:1px solid #bbb; } }`,
+
+  buildExportFile({ title, meta, turns, sourceUrl }) {
+    const css = this.EXPORT_CSS;
+    const exported = new Date().toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' });
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${this.escapeHtml(title)}</title>
+<style>${css}</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1 class="chat-title">${this.escapeHtml(title)}</h1>
+  <div class="meta">${meta ? this.escapeHtml(meta) + '<br>' : ''}Saved from <a href="${this.escapeHtml(sourceUrl)}">${this.escapeHtml(sourceUrl)}</a> on ${this.escapeHtml(exported)}</div>
+</header>
+${this.turnsToHtml(turns)}
+</div>
+</body>
+</html>`;
+  },
+
+  slug(title) {
+    const s = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+    return (s || 'gemini-chat') + '.html';
+  },
+
+  // Runs ON an open Google AI Mode chat or Gemini share page (as a bookmarklet)
+  // and downloads the conversation as a standalone HTML file. Must be fully
+  // self-contained: it is serialized with .toString() into a javascript: URL,
+  // so it cannot reference GeminiExport or anything else on the tool page.
+  // '__CSS__' is replaced with EXPORT_CSS when the href is built.
+  bookmarkletFn: function () {
+    var D = document, L = location, W = window;
+    function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    var ALLOW = ' P DIV SPAN UL OL LI PRE CODE TABLE THEAD TBODY TFOOT TR TH TD H1 H2 H3 H4 H5 H6 STRONG B EM I U S A IMG BLOCKQUOTE BR HR SUP SUB ';
+    var DROP = ' SCRIPT STYLE NOSCRIPT SVG BUTTON MAT-ICON INPUT TEXTAREA SELECT IFRAME CANVAS AUDIO VIDEO MESSAGE-ACTIONS TTS-CONTROL SOURCES-CAROUSEL SOURCES-CAROUSEL-INLINE ';
+    function san(src) {
+      var out = D.createElement('div');
+      (function walk(s, d) {
+        for (var i = 0; i < s.childNodes.length; i++) {
+          var c = s.childNodes[i];
+          if (c.nodeType === 3) { d.appendChild(D.createTextNode(c.nodeValue)); continue; }
+          if (c.nodeType !== 1) continue;
+          var t = c.tagName.toUpperCase();
+          if (DROP.indexOf(' ' + t + ' ') >= 0) continue;
+          var role = c.getAttribute('role');
+          if (c.getAttribute('aria-hidden') === 'true' || role === 'button' || role === 'dialog' || role === 'navigation' || role === 'menu') continue;
+          if (ALLOW.indexOf(' ' + t + ' ') < 0) { walk(c, d); continue; }
+          var e = D.createElement(t);
+          if (t === 'A') {
+            var h = c.getAttribute('href');
+            if (h && h.indexOf('javascript:') !== 0) {
+              try { e.setAttribute('href', new URL(h, L.href).href); } catch (x) { e.setAttribute('href', h); }
+              e.setAttribute('target', '_blank'); e.setAttribute('rel', 'noopener');
+            }
+          }
+          if (t === 'IMG') {
+            var sr = c.getAttribute('src') || '';
+            if (!/^https?:/.test(sr)) continue;
+            e.setAttribute('src', sr);
+            if (c.getAttribute('alt')) e.setAttribute('alt', c.getAttribute('alt'));
+          }
+          if (c.getAttribute('colspan')) e.setAttribute('colspan', c.getAttribute('colspan'));
+          if (c.getAttribute('rowspan')) e.setAttribute('rowspan', c.getAttribute('rowspan'));
+          walk(c, e);
+          if ((t === 'SPAN' || t === 'DIV') && !e.textContent.trim() && !e.querySelector('img,br,hr')) continue;
+          d.appendChild(e);
+        }
+      })(src, out);
+      return out.innerHTML;
+    }
+    var turns = [], title = '', i, k;
+    var gem = D.querySelectorAll('share-turn-viewer');
+    if (gem.length) {                                     // Gemini share page
+      for (i = 0; i < gem.length; i++) {
+        var uq = gem[i].querySelector('user-query'), user = '';
+        if (uq) {
+          var lines = uq.querySelectorAll('.query-text-line'), parts = [];
+          for (k = 0; k < lines.length; k++) parts.push(lines[k].textContent.trim());
+          user = parts.length ? parts.join('\n') : uq.textContent.trim();
+        }
+        var mcs = gem[i].querySelectorAll('message-content'), html = '';
+        for (k = 0; k < mcs.length; k++) html += san(mcs[k]);
+        if (user || html) turns.push({ user: user, html: html });
+      }
+      var gh1 = D.querySelector('share-landing-page h1, h1');
+      title = gh1 ? gh1.textContent.trim() : D.title;
+    } else {                                              // Google AI Mode chat
+      var heads = D.querySelectorAll('h2,h3,h4'), seen = [];
+      for (i = 0; i < heads.length; i++) {
+        var m = heads[i].textContent.match(/^\s*You said:?\s*([\s\S]*)$/);
+        if (!m || !m[1].trim()) continue;
+        var qArea = heads[i].parentElement, box = qArea && qArea.parentElement;
+        if (!box || seen.indexOf(box) >= 0) continue;
+        seen.push(box);
+        var ans = '';
+        for (k = 0; k < box.children.length; k++) {
+          var ch = box.children[k];
+          if (ch === qArea || ch.contains(heads[i])) continue;
+          if (ch.textContent.trim().length < 2) continue;
+          ans += san(ch);
+        }
+        turns.push({ user: m[1].trim(), html: ans });
+      }
+      title = (D.title || '').replace(/\s*-\s*Google Search\s*$/i, '');
+      var ah1 = D.querySelector('h1');
+      if (ah1 && /AI Mode Conversation/i.test(ah1.textContent)) title = ah1.textContent.trim();
+      title = title.replace(/^\s*AI Mode Conversation:\s*/i, '');
+    }
+    // iOS Shortcuts "Run JavaScript on Web Page" injects a global completion();
+    // it must be called to hand a value back to the shortcut, which then saves it.
+    var toShortcut = (typeof completion === 'function') ? completion : null;
+    if (!turns.length) {
+      var none = 'NO_CONVERSATION_FOUND';
+      if (toShortcut) { toShortcut(none); return; }
+      alert('No conversation found on this page.\n\nOpen a Google AI Mode chat (share.google/aimode link) or a Gemini share page, let it load fully, then run this again.');
+      return;
+    }
+    var body = '';
+    for (i = 0; i < turns.length; i++) {
+      if (turns[i].user) body += '<div class="turn"><div class="who">You</div><div class="user-msg">' + esc(turns[i].user) + '</div></div>';
+      if (turns[i].html) body += '<div class="turn"><div class="who">✦ AI</div><div class="gemini-msg">' + turns[i].html + '</div></div>';
+    }
+    if (!title) title = 'AI conversation';
+    var out = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n<style>' + '__CSS__' + '</style>\n</head>\n<body>\n<div class="wrap">\n<header>\n<h1 class="chat-title">' + esc(title) + '</h1>\n<div class="meta">Saved from <a href="' + esc(L.href) + '">' + esc(L.href.length > 80 ? L.href.slice(0, 80) + '…' : L.href) + '</a> on ' + esc(new Date().toLocaleString()) + '</div>\n</header>\n' + body + '\n</div>\n</body>\n</html>';
+    var name = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'ai-chat';
+    if (W.__GEMTEST) { W.__GEMTEST({ title: title, turns: turns, html: out, name: name }); return; }
+    if (toShortcut) { toShortcut(out); return; }         // iOS Shortcut path — return HTML string
+    var a = D.createElement('a');                         // browser path — download the file
+    a.href = URL.createObjectURL(new Blob([out], { type: 'text/html' }));
+    a.download = name + '.html';
+    D.body.appendChild(a); a.click(); a.remove();
+  },
+
+  // Plain-JS IIFE with the real CSS baked in. Used for the iOS Shortcut action
+  // and (URL-encoded) for the desktop/Android bookmarklet.
+  buildSource() {
+    return '(' + this.bookmarkletFn.toString().replace("'__CSS__'", JSON.stringify(this.EXPORT_CSS)) + ')()';
+  },
+  buildBookmarkletHref() {
+    return 'javascript:' + encodeURIComponent(this.buildSource());
+  }
+};
+
+/* ---------- page wiring (browser only) ---------- */
+if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.getElementById) {
+  const $ = id => document.getElementById(id);
+  let exportBlobUrl = null, exportFilename = 'gemini-chat.html';
+
+  function setStatus(msg, cls) {
+    const el = $('status');
+    el.textContent = msg;
+    el.className = 'status' + (cls ? ' ' + cls : '');
+  }
+
+  async function convert() {
+    const raw = $('link').value;
+    if (/share\.google\/aimode|google\.[a-z.]+\/search/i.test(raw)) {
+      setStatus('That’s a Google “AI Mode” chat — Google blocks reading those remotely, so pasting the link won’t work. Use the “✦ Save AI chat” bookmarklet below instead: open your link, then click the bookmark.', 'error');
+      document.getElementById('aimodeCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
+    const url = GeminiExport.normalizeLink(raw);
+    if (!url) {
+      setStatus('That doesn’t look like a Gemini share link. Expected gemini.google.com/share/… or g.co/gemini/share/…', 'error');
+      return;
+    }
+    $('go').disabled = true;
+    $('result').classList.add('hidden');
+    setStatus('Fetching and rendering the shared chat… (takes ~10–30 seconds)');
+    try {
+      const resp = await fetch('https://r.jina.ai/' + url, {
+        headers: { 'X-Return-Format': 'html', 'X-Wait-For-Selector': 'share-turn-viewer', 'X-Timeout': '60' }
+      });
+      if (resp.status === 429) throw new Error('The fetch service is rate-limited right now. Wait a minute and try again.');
+      if (!resp.ok) throw new Error('Fetch failed (HTTP ' + resp.status + '). Check the link and try again.');
+      const html = await resp.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const parsed = GeminiExport.parse(doc, document);
+      if (!parsed.turns.length) {
+        throw new Error('No conversation found at that link. It may have been deleted, made private, or hasn’t finished rendering — try once more.');
+      }
+      const fileHtml = GeminiExport.buildExportFile({ ...parsed, sourceUrl: url });
+
+      if (exportBlobUrl) URL.revokeObjectURL(exportBlobUrl);
+      exportBlobUrl = URL.createObjectURL(new Blob([fileHtml], { type: 'text/html' }));
+      exportFilename = GeminiExport.slug(parsed.title);
+
+      $('resultTitle').textContent = parsed.title + ' — ' + parsed.turns.length +
+        (parsed.turns.length === 1 ? ' exchange' : ' exchanges');
+      $('preview').innerHTML = GeminiExport.turnsToHtml(parsed.turns);
+      $('result').classList.remove('hidden');
+      setStatus('Done — preview below. Click “Download HTML” to save the file.', 'ok');
+    } catch (e) {
+      setStatus(e.message || String(e), 'error');
+    } finally {
+      $('go').disabled = false;
+    }
+  }
+
+  $('go').addEventListener('click', convert);
+  $('link').addEventListener('keydown', e => { if (e.key === 'Enter') convert(); });
+  $('download').addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = exportBlobUrl;
+    a.download = exportFilename;
+    a.click();
+  });
+  $('openTab').addEventListener('click', () => window.open(exportBlobUrl, '_blank'));
+
+  const bmHref = GeminiExport.buildBookmarkletHref();   // javascript:… (bookmarks bar + Android)
+  const iosJs = GeminiExport.buildSource();             // plain JS (iOS Shortcut action)
+  $('bookmarklet').setAttribute('href', bmHref);
+
+  async function copyText(text, msgEl) {
+    try {
+      await navigator.clipboard.writeText(text);
+      msgEl.textContent = 'Copied!';
+    } catch (e) {
+      // Fallback for non-secure contexts / older browsers
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); msgEl.textContent = 'Copied!'; }
+      catch (e2) { msgEl.textContent = 'Press and hold to copy manually.'; }
+      ta.remove();
+    }
+    setTimeout(() => { msgEl.textContent = ''; }, 4000);
+  }
+  $('copyIosJs').addEventListener('click', () => copyText(iosJs, $('copyIosMsg')));
+  $('copyBmUrl').addEventListener('click', () => copyText(bmHref, $('copyBmMsg')));
+}
+
+/* expose for tests */
+if (typeof module !== 'undefined' && module.exports) module.exports = GeminiExport;
+</script>
+</body>
+</html>
