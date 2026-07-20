@@ -300,6 +300,9 @@
   details[open] summary::before { content: "–"; }
   details[open] summary { border-bottom: 1px dashed var(--line); margin-bottom: 12px; }
   details > *:last-child { margin-bottom: 18px; }
+  details.plens { border-left: 4px solid color-mix(in srgb, var(--teal) 45%, transparent); }
+  details.plens summary { font-size: 14.5px; }
+  details.plens summary::before { background: var(--teal-soft); color: var(--teal); }
 
   /* ---------- Path picker ---------- */
   .paths { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 26px 0; }
@@ -382,6 +385,7 @@
     body { background: #fff; }
     pre { white-space: pre-wrap; box-shadow: none; }
     .card, .path-card, details, table, .term { box-shadow: none; }
+    details::details-content { content-visibility: visible; display: block; }
     h2 { break-before: page; }
   }
 </style>
@@ -2014,6 +2018,19 @@ weekly-report/
       <p style="margin:0"><strong>Signature:</strong> no single dramatic failure — just a session that's a little dumber everywhere, because idle tool schemas, stale instructions, and unused reference material tax attention on every turn (12.1's rot, self-inflicted). <strong>Fix:</strong> curate connectors per project; push detail down the disclosure ladder (skills, isolated files); measure what standing context actually costs and evict what doesn't pay rent.</p>
     </div>
   </div>
+  <details class="plens">
+    <summary>🔬 Platform lens: where each disease is endemic — named outbreaks</summary>
+    <p>Every pathology above has platforms where it's an occasional visitor and platforms where it's <em>resident</em>, because the architecture invites it. Knowing the endemic map speeds diagnosis — and quietly answers “should I build this there?”:</p>
+    <table>
+      <tr><th style="width:200px">Disease</th><th>Endemic to</th><th>What the outbreak looks like</th></tr>
+      <tr><td>Contextual data failure</td><td><strong>Copilot in Excel · Power BI Copilot</strong></td><td>“Summarize this data” silently reads the active sheet, the filtered view, or the wrong lookalike. Excel Copilot without named tables is guessing at ranges; Power BI Copilot on an uncurated semantic model is choosing among three fields called <code>revenue</code>. The cure is structural, not prompt-side: named tables, curated measures, synonyms.</td></tr>
+      <tr><td>Cross-document hallucination</td><td><strong>M365 Copilot chat</strong></td><td>Horizontal by design: ask “what's our pricing policy?” against fourteen decks that each half-answer it, and the response fuses them into a policy nobody wrote. Claude Code is largely immune <em>inside a repo</em> — agentic search reads whole files, not top-scoring fragments — which is one honest reason to move synthesis work vertical.</td></tr>
+      <tr><td>Version drift</td><td><strong>Anything SharePoint-fed</strong> — M365 chat, Studio knowledge, declarative agents</td><td>The index faithfully holds 2022's org chart beside this year's and scores both as relevant. And note the code-side variant: a <code>copilot-instructions.md</code> describing the architecture two refactors ago — trusted, obeyed, wrong (20.2's rule 8).</td></tr>
+      <tr><td>Semantic mapping loss</td><td><strong>Copilot Studio topics · declarative agents · Claude skills</strong></td><td>The Studio topic triggered on “expense report” while users type “get money back”; the declarative-agent capability no real phrasing ever matches; the skill described in <em>your</em> vocabulary instead of the asker's. One disease, three costumes; one cure (16.1's router eval).</td></tr>
+      <tr><td>Scope resolution failure</td><td><strong>VS Code Copilot · Claude Code</strong> — any file-layered config</td><td>Two <code>applyTo:</code> globs claiming the same file; a global CLAUDE.md rule fighting the project's; AGENTS.md nearest-wins surprising a monorepo. The chat-configured platforms (Studio, M365) mostly dodge this one — fewer layers is their single architectural mercy.</td></tr>
+      <tr><td>Token pollution</td><td><strong>Claude Code with MCP sprawl</strong> — but everyone catches it</td><td>Six connected servers means dozens of standing tool schemas taxing every turn — at least <code>/context</code> makes it diagnosable. The M365 version (every plugin and agent pinned “just in case”) has no <code>/context</code>; you feel it only as vaguely worse answers with no dashboard to blame.</td></tr>
+    </table>
+  </details>
   <div class="callout warn">
     <div class="co-title">⚠️ The index is a product, not a feature</div>
     <p>At enterprise scale, grounding quality is <em>operated</em>, not installed: crawl schedules, connector health, metadata schemas, version supersession, and — the one that bites hardest — <strong>permissions</strong>. ACL-trimmed retrieval means the AI can surface anything the asking user can technically access, which turns years of quiet oversharing into instantly searchable answers. “Copilot leaked it” almost always decodes to “Copilot indexed what was already overshared.” Fix the permission debt; the AI just made it visible.</p>
@@ -2035,6 +2052,18 @@ weekly-report/
     <tr><td><strong>Semantic match</strong></td><td>The model picks from descriptions alone</td><td>Probabilistic. Fine for convenience; unaudited, it's where capabilities go to be forgotten.</td></tr>
   </table>
   <p>When you do live on the bottom rung, engineer it like the API it is. A routing-grade description has three clauses: <em>trigger vocabulary</em> (the words users actually say), <em>scope</em> (what it handles), and — the one everyone omits — <em>anti-scope</em> (“not for X; for X use Y”), which is what keeps two similar skills from stealing each other's traffic. Then <strong>eval the router itself</strong> (9.5's discipline, one level up): a list of twenty real phrasings and which capability each should activate, re-run whenever a description changes. A misrouting router silently degrades everything downstream of it, which is what makes it the highest-leverage eval you can own.</p>
+  <details class="plens">
+    <summary>🔬 Platform lens: the same three rungs, wherever you build</summary>
+    <p>Every platform implements this ladder under different names — and each <em>starts</em> you on a different rung, which tells you how much routing reliability you must engineer versus inherit:</p>
+    <table>
+      <tr><th style="width:150px">Platform</th><th>Explicit rung</th><th>Filtered rung</th><th>Semantic rung</th></tr>
+      <tr><td><strong>Claude Code</strong></td><td>Slash commands, <code>@agent-name</code>, <code>disable-model-invocation</code></td><td>Path-scoped rules; per-project <code>.mcp.json</code> curation</td><td>Skill &amp; subagent descriptions — the default for anything you don't name</td></tr>
+      <tr><td><strong>VS Code Copilot</strong></td><td><code>/prompt-name</code>, chat participants</td><td><code>applyTo:</code> globs on instructions files</td><td>What the chat auto-includes — largely out of your hands</td></tr>
+      <tr><td><strong>Copilot Studio</strong></td><td>—</td><td><strong>Classic topics with trigger phrases</strong> — the platform's great deterministic gift; use them for every high-stakes path</td><td>Generative orchestration — flexible, auditable only by hand-testing; fine for the long tail</td></tr>
+      <tr><td><strong>M365 agents</strong></td><td>The user @-mentions the agent by name</td><td>Declared capabilities bound what it can reach</td><td>Plugin/function descriptions decide what fires — the least observable router in this table</td></tr>
+    </table>
+    <p style="margin:0">The design consequence: <strong>Studio rewards climbing the ladder</strong> (its deterministic rung is first-class), <strong>Claude Code lets you climb all of it</strong> (anything can be made explicit), and <strong>M365's chat surface mostly denies the climb</strong> — which is why high-stakes dispatch belongs on the first two, and the third is best used for what it's actually for: recall.</p>
+  </details>
 
   <h3 id="fe-forking">16.2 · Context forking &amp; just-in-time context</h3>
   <p>Every delegation is a <strong>context fork</strong>: new work begins with some portion of the parent's context. The design question is <em>how much crosses the fork</em> — and the expert answer is aggressive: almost none of it.</p>
@@ -2064,6 +2093,16 @@ weekly-report/
     <tr><td><strong>Standing-privilege sprawl</strong></td><td>Every session everywhere can touch everything, because permissions were set once, globally, generously.</td><td><strong>Localized sandbox contraction:</strong> a sane global baseline, then shrink per task — write access fenced to the task's directory, network off unless needed, risky work in a worktree or container where worst-case is deleting the copy. Least privilege as a per-task decision (12.5's trifecta logic, made routine).</td></tr>
     <tr><td><strong>Wrong-plane editing</strong></td><td>The model free-hand edits 400 files for a mechanical rename — slow, expensive, and probabilistically wrong somewhere you won't find until Thursday.</td><td>Match determinism to the edit. Mechanical and lexical → script it. Structural → have the model <em>write a codemod</em> against the syntax tree (<strong>AST-level</strong> tools parse code into its grammatical structure, so “rename this function everywhere” is one exact operation, not 400 guesses — the machinery inside serious refactoring tools). Judgment-requiring → that's the model's plane. The expert instinct: <em>write the tool, then run the tool</em> — one probabilistic act instead of four hundred.</td></tr>
   </table>
+  <details class="plens">
+    <summary>🔬 Platform lens: the diseases in the wild, one outbreak each</summary>
+    <ul style="margin:0">
+      <li><strong>Over-abstraction, Microsoft strain:</strong> a Copilot Studio bot whose topic calls a Power Automate flow that calls a child flow that calls an HTTP action — four layers, zero end-to-end observability, and the bug report says only “the bot gave a weird answer.” Low-code lowers the cost of <em>adding</em> layers, which is precisely why Studio builds sprawl faster than code builds do. Same cure: count layers, flatten.</li>
+      <li><strong>Over-abstraction, Claude strain:</strong> CLAUDE.md importing files that import files; a “meta-skill” that generates skills; an orchestrator agent managing orchestrator agents. Plain text makes layers feel free. They aren't — every hop shreds a little meaning.</li>
+      <li><strong>Fat-client cleverness you can't opt out of:</strong> editor Copilots silently assemble context from open tabs, recent edits, and neighboring files — which is why the same chat question answers differently with different tabs open. The countermeasure is just knowing it exists: close irrelevant tabs before asking anything that matters. Claude Code sits at the thin end of this spectrum — <code>/context</code> shows the actual assembled window, which is half the reason debugging it feels possible at all.</li>
+      <li><strong>Standing-privilege sprawl, three dashboards:</strong> in Claude Code it's a global <code>allow</code> list written on a generous Friday; in M365 it's Graph connectors indexing an overshared tenant (15.3's warning); on GitHub it's a token with every scope because scoping was fiddly. Same disease everywhere; the audit is the cure.</li>
+      <li><strong>Wrong-plane editing, spreadsheet edition:</strong> asking Copilot in Excel to fix a value in each of 400 rows (probabilistic, per-cell, unverifiable) instead of asking it for <em>one formula or one Office Script</em> (deterministic, inspectable, run once). The tell is identical across platforms: the model doing something N times that a program would do once.</li>
+    </ul>
+  </details>
 
   <h3 id="fe-doctrine">16.5 · The efficient-configuration doctrine</h3>
   <p>Everything in Parts 13–16 compresses into one audit you can run on any setup — yours or a platform's — in ten minutes. This is the codex as a checklist:</p>
@@ -2288,7 +2327,7 @@ POINTERS: method → .claude/skills/monthly-report/
   <div class="card">
     <ol style="margin:0">
       <li><strong>You (or the agent, reviewed by you) write the acceptance tests first</strong> — encoding what “correct” means, including edge cases. This is where human judgment concentrates.</li>
-      <li><strong>Lock them.</strong> Add <code>"deny": ["Edit(tests/**)"]</code> to the task's permissions — now the agent <em>physically cannot</em> “fix” a failing test by editing it, the classic agent cheat (19.3). A structural gatekeeper doing a code-review's job.</li>
+      <li><strong>Lock them.</strong> Add <code>"deny": ["Edit(tests/**)"]</code> to the task's permissions — now the agent <em>physically cannot</em> “fix” a failing test by editing it, the classic agent cheat (19.4). A structural gatekeeper doing a code-review's job.</li>
       <li><strong>Brief: “make these pass.”</strong> The agent iterates red→green against a verifier that can't be argued with, which is exactly the closed loop (10.3) agents are best at.</li>
       <li><strong>Review the diff for <em>how</em>, not <em>whether</em>.</strong> The tests already settled whether. Your attention goes to design, safety, and side effects — the things tests don't see.</li>
     </ol>
@@ -2357,7 +2396,62 @@ POINTERS: method → .claude/skills/monthly-report/
     <p><strong>Vertical + loop-shaped → Claude Code. Horizontal + recall-shaped → M365. Passive + flow-shaped → completions. Recurring + unattended → headless + scheduler. Shared + interactive → single-file artifact.</strong> When a task seems to fit two homes, split it at the boundary and let files carry it across — the hybrid is usually better than either monolith.</p>
   </div>
 
-  <h3 id="iq-smells">19.3 · The smell catalog: mid-flight signals and the correct reflex</h3>
+  <h3 id="iq-dossiers">19.3 · The dossier drawer: what choosing each platform commits you to</h3>
+  <p>The routing table answers <em>“where does this task go?”</em> This drawer answers the question underneath it: <em>“if I build here, what am I signing up for?”</em> Every platform is a bundle of strengths, ceilings, a config style that fits it, and exit costs — and most platform regret comes from discovering the ceiling or the exit cost after committing, both of which were knowable on day one. One dossier per platform; open the ones you're weighing:</p>
+  <details>
+    <summary>🖥️ Claude Code — the deep-work engine</summary>
+    <p><strong>Build here:</strong> anything file-shaped — data pipelines, refactors, analyses, single-file artifacts, recurring headless jobs, and any task where verification can run in a shell.</p>
+    <p><strong>Strongest:</strong> the loop plus shell access (verification happens <em>in place</em>); the deepest configuration surface in the industry — hooks, skills, subagents, a real permission grammar; and scriptability: it composes with cron and CI like a Unix tool, which no chat surface does.</p>
+    <p><strong>Ceilings:</strong> no reach into org data until you wire MCP connectors yourself; cost scales with usage rather than per seat; and the surface is a terminal — colleagues who won't open one can consume its outputs forever but will never drive it.</p>
+    <p><strong>Config that fits:</strong> the full reference tree of 20.1 — this is the <em>only</em> platform whose ceiling rewards deep configuration, so hooks, evals, and skills built here compound instead of hitting a wall. If you'll invest config effort anywhere, invest it here.</p>
+    <p><strong>Ramifications of committing:</strong> the lowest output lock-in in this drawer — everything it produces is files and git history, portable to any future tool. The price is operator skill and governance: the platform ships judgment tools, not guardrails. You are the admin, the security team, and the budget owner.</p>
+  </details>
+  <details>
+    <summary>🧑‍✈️ GitHub Copilot — the ambient layer with an async arm</summary>
+    <p><strong>Build here:</strong> inline velocity while writing; repo-scoped Q&amp;A and review; and — the underused arm — async issue→PR work through the coding agent.</p>
+    <p><strong>Strongest:</strong> zero-friction presence where the code already lives; per-seat pricing your finance team understands; org-level policy administered centrally; and the write-once AGENTS.md story (18.6) means config investment travels.</p>
+    <p><strong>Ceilings:</strong> thin control of the agent loop — no hooks, no permission grammar — so “always” rules stay prose and never become enforcement; 13.5's line between model and shell is drawn <em>for</em> you, on the side you wouldn't choose. Premium-request caps make heavy agentic use bursty rather than continuous.</p>
+    <p><strong>Config that fits:</strong> a short <code>copilot-instructions.md</code>, path-scoped <code>.instructions.md</code> files, a few saved prompts. Deep trees are wasted here — the platform reads a thin slice. Put durable depth in AGENTS.md and in the repo itself: for the coding agent, your tests and <code>scripts/</code> <em>are</em> the config, because the verifier is the only instruction it can't ignore.</p>
+    <p><strong>Ramifications of committing:</strong> process lock-in to the GitHub ecosystem is real; output lock-in is nil (it's your repo). The habit to police: treating completion quality as architecture guidance — completions optimize <em>plausible-next</em>, not <em>right</em>, and that caveat never expires.</p>
+  </details>
+  <details>
+    <summary>🏢 M365 Copilot chat &amp; declarative agents — the horizontal surface</summary>
+    <p><strong>Build here:</strong> strictly speaking you don't build the chat — you <em>use</em> it for horizontal recall and you <em>operate</em> its index. You build declarative agents: scoped, packaged assistants distributed to coworkers inside Teams and Office.</p>
+    <p><strong>Strongest:</strong> the Graph — nothing else has your mail, meetings, and chats; ACL-trimmed retrieval and a compliance story your security team already approved; and distribution to thousands of users with zero infrastructure, because the surface is already on every desktop.</p>
+    <p><strong>Ceilings:</strong> no loop, no shell, shallow iteration — it answers, it doesn't <em>work</em>. Grounding quality is exactly your tenant's data hygiene (15.3), which you may not control. Declarative agents are static manifests: no branching logic, thin observability, and debugging is guess-and-republish.</p>
+    <p><strong>Config that fits:</strong> for the chat, the config <em>is</em> the index — connector curation, permission audits, retiring stale documents. For an agent: one tight instruction block written to 20.2's rules, a <em>few</em> curated knowledge sources (every source added is a cross-document-hallucination risk added), and conversation starters treated as router training data.</p>
+    <p><strong>Ramifications of committing:</strong> per-seat cost regardless of usage; value tracks tenant hygiene; and everything you build runs only inside the M365 runtime. Plan the escape path — Studio or code — <em>before</em> an agent's manifest ceiling starts to hurt, because by then it has users.</p>
+  </details>
+  <details>
+    <summary>🎛️ Copilot Studio — the managed middle</summary>
+    <p><strong>Build here:</strong> grounded org chatbots that need managed publishing, authentication, channels, and analytics; agents that trigger business workflows through Power Platform connectors.</p>
+    <p><strong>Strongest:</strong> the managed middle nobody else offers — knowledge, actions, channels, and analytics without standing up infrastructure; classic topics give you a first-class <em>deterministic</em> routing rung (16.1) that most platforms lack; maintainable by a low-code team rather than engineers.</p>
+    <p><strong>Ceilings:</strong> expressiveness — real logic gets awkward fast, and the workaround (chaining Power Automate flows) is 16.4's over-abstraction disease with a license attached. Generative orchestration is auditable only by hand-testing. Capacity and per-message pricing need modeling <em>before</em> commitment, not after the bot is popular.</p>
+    <p><strong>Config that fits:</strong> few topics; explicit trigger phrases on every high-stakes path (the deterministic rung is the whole reason to be here); generative answers reserved for the long tail; knowledge sources curated with 15.3's discipline, because every grounding pathology applies in full.</p>
+    <p><strong>Ramifications of committing:</strong> the strongest lock-in in this drawer — topics and flows export to nowhere. Licensing complexity compounds. And culturally, it's where citizen-developer prototypes calcify into load-bearing systems nobody owns: name an owner on day one, or you've pre-ordered 21.4's orphan.</p>
+  </details>
+  <details>
+    <summary>📊 Copilot in Excel &amp; Power BI — the in-place explorers</summary>
+    <p><strong>Build here:</strong> nothing durable. These are exploration accelerants where the data and its people already live — and used as exactly that, they're genuinely useful.</p>
+    <p><strong>Strongest:</strong> zero distance from the data; no export, no upload, no context to assemble. Power BI Copilot in particular is strong when the semantic model beneath it is well-curated — it's only as smart as the model it queries.</p>
+    <p><strong>Ceilings:</strong> verification is thin to absent; contextual data failure is endemic (15.3); there's no loop, no transcript, and no reproducibility — and analysis you can't re-run is analysis you can't trust twice.</p>
+    <p><strong>Config that fits:</strong> there is no config file — <em>the data layer is the config.</em> In Excel: named tables, clean headers, one table per concern. In Power BI: measure names, descriptions, and synonyms in the semantic model. This work pays for itself even with Copilot switched off, which makes it the rare config investment with no platform risk at all.</p>
+    <p><strong>Ramifications of committing:</strong> choosing these for load-bearing analysis is choosing unverifiable transformations — 8.4's honest split stands. Explore here; then export the data and rebuild anything that must be <em>right</em> where a loop exists.</p>
+  </details>
+  <details>
+    <summary>🌐 Claude chat, Projects &amp; artifacts — the reasoning surface</summary>
+    <p><strong>Build here:</strong> single-file artifacts — dashboards, calculators, documents like this manual; one-shot analyses of uploaded files; Projects as standing lightweight context for a recurring topic.</p>
+    <p><strong>Strongest:</strong> reasoning quality per unit of effort; artifacts as instant, shareable, interactive outputs; and the friendliest surface for serious work by people who will never open a terminal.</p>
+    <p><strong>Ceilings:</strong> no filesystem or repo verticality; uploads are snapshots, so version drift is built into the workflow (the file you uploaded is stale the moment the original changes); no org grounding.</p>
+    <p><strong>Config that fits:</strong> Project instructions are a miniature CLAUDE.md — lean brief, golden examples, output preferences. Project knowledge is a tiny corpus you personally operate: few documents, refreshed deliberately, dead ones deleted. All of 15.3, at desk scale.</p>
+    <p><strong>Ramifications of committing:</strong> near-zero lock-in — artifacts are self-contained files. The ceiling arrives on a predictable schedule: the moment the work becomes multi-file or recurring, which is precisely the graduation trigger to Claude Code.</p>
+  </details>
+  <div class="callout tip">
+    <div class="co-title">🧭 The pattern across all six dossiers</div>
+    <p>Read together, the drawer reduces to one trade: <strong>platforms that produce files (Claude Code, Copilot, Claude chat) have low exit costs and high skill demands; platforms that host experiences (M365, Studio) have effortless distribution and real lock-in.</strong> So prototype on the file side, where leaving is cheap; commit to the hosted side only for the distribution it uniquely buys; and when one system needs both depth and reach, split it — build the engine as files, serve the answers through the hosted front door, with the file bus (8.7) between them.</p>
+  </div>
+
+  <h3 id="iq-smells">19.4 · The smell catalog: mid-flight signals and the correct reflex</h3>
   <p>Experts don't ride failures to the end; they bail early on recognizable smells. Each of these is a mechanical symptom with a mechanical response — the reflexes that separate a 10-minute recovery from a lost afternoon:</p>
   <table>
     <tr><th style="width:290px">Smell</th><th>What's actually happening</th><th>The reflex</th></tr>
@@ -2370,7 +2464,7 @@ POINTERS: method → .claude/skills/monthly-report/
     <tr><td>“Done!” — and it deleted the failing part to get there</td><td>Goal met literally, intent missed — your “done means” was underspecified</td><td>The fix is upstream: next brief gets an explicit done-means line, and the deletion trick becomes a test case in your golden set.</td></tr>
   </table>
 
-  <h3 id="iq-instincts">19.4 · The ten instincts</h3>
+  <h3 id="iq-instincts">19.5 · The ten instincts</h3>
   <p>Everything this manual argues, compiled to the reflex level — the things experts do without deciding to. Read them the day you finish Part 1, and again the month you realize they've become yours:</p>
   <div class="card">
     <ol style="margin:0">
@@ -2378,7 +2472,7 @@ POINTERS: method → .claude/skills/monthly-report/
       <li><strong>Write the check before the work.</strong> Test, schema, validator, done-means line — judgment concentrated upstream is worth ten reviews downstream (18.2).</li>
       <li><strong>Smallest sufficient context, always.</strong> Point don't paste; pass maps not territory; evict what doesn't pay rent (12.1, 16.2).</li>
       <li><strong>Blame the context before the model.</strong> Wrong output usually means wrong/missing/stale input — check what it <em>saw</em> (/context, the transcript) before cursing what it <em>said</em>.</li>
-      <li><strong>Prefer regenerate to excavate.</strong> Past a few correction rounds, a clean brief that includes the lessons beats archaeology on a poisoned session (19.3).</li>
+      <li><strong>Prefer regenerate to excavate.</strong> Past a few correction rounds, a clean brief that includes the lessons beats archaeology on a poisoned session (19.4).</li>
       <li><strong>Climb the determinism ladder.</strong> Recurring judgment → prompt file; recurring mechanics → script; “always” → hook; dispatch → explicit (13.5, 16.1). The model is for judgment only.</li>
       <li><strong>Ask for the script, not the act.</strong> One inspectable program over four hundred probabilistic edits (18.3).</li>
       <li><strong>Grant autonomy by environment, not by trust.</strong> Sandbox wide, permission narrow; the walls do the worrying (18.4, 12.5).</li>
@@ -2426,6 +2520,20 @@ POINTERS: method → .claude/skills/monthly-report/
 ├── settings.json                <span class="c">  personal baseline permissions</span>
 └── skills/ · agents/ · commands/<span class="c">  personal toolkit that follows you</span></code></pre>
   <p>Three structural rules do most of the work. <strong>Check in everything shareable</strong> — settings, agents, skills, commands, .mcp.json — because config reviewed in pull requests is config that improves; the only local files are secrets and personal taste. <strong>Scripts are the shared core:</strong> the same <code>validate.py</code> is called by you, by the agent mid-task, by the hook that gates it, and by CI — one implementation of “correct,” four enforcement points. And <strong>docs/ is where the weight goes:</strong> every time CLAUDE.md threatens to grow, the growth is usually a new pointer to a new file in docs/, not new resident lines.</p>
+  <details class="plens">
+    <summary>🔬 Platform lens: how much of this tree each platform can even hold</summary>
+    <p>The tree above is drawn at Claude Code's ceiling — the only platform that reads all of it. Everywhere else, match your config investment to what the platform can actually consume, or you're writing files nothing will ever read:</p>
+    <table>
+      <tr><th style="width:190px">Platform</th><th>What it reads</th><th>So the right investment is…</th></tr>
+      <tr><td><strong>Claude Code</strong></td><td>The entire tree — settings, hooks, skills, agents, commands, docs, scripts</td><td>Full depth. This is where 20.1 pays compound interest; hooks and evals built here are the moat.</td></tr>
+      <tr><td><strong>VS Code Copilot</strong></td><td>The <code>.github/</code> slice plus AGENTS.md</td><td>A one-page baseline, path-scoped instruction files, a few prompts. Durable knowledge goes in AGENTS.md, which travels; deep trees here are dead weight.</td></tr>
+      <tr><td><strong>Copilot coding agent</strong></td><td>AGENTS.md, instructions, and — crucially — the repo itself</td><td>Tests, CI, and <code>scripts/</code>. For an async agent the verifier <em>is</em> the instruction: a locked test suite outranks any prose you could write.</td></tr>
+      <tr><td><strong>Copilot Studio</strong></td><td>No file tree — a designer holds the equivalents (topics ≈ commands, knowledge sources ≈ docs/, connectors ≈ .mcp.json)</td><td>Few topics, curated sources — and export/solution-manage the agent so its config lives in version control anyway. Config you can't diff is config you can't review.</td></tr>
+      <tr><td><strong>M365 declarative agent</strong></td><td>One manifest</td><td>Treat its fields with file-grade discipline: instructions written to 20.2's rules, capabilities granted like <code>tools:</code> (minimal, on purpose), starters written like <code>argument-hint</code>s.</td></tr>
+      <tr><td><strong>Excel / Power BI</strong></td><td>The data model itself</td><td>Named tables, measure descriptions, synonyms — the one config layer with zero platform risk, because it improves the humans' experience too.</td></tr>
+    </table>
+    <p style="margin:0">The meta-rule is 18.6's, extended: <strong>write each piece of durable knowledge once, in the most portable layer any of your platforms reads</strong> — because config that lives only in a designer is config you can't grep, diff, or take with you.</p>
+  </details>
 
   <h3 id="cf-prose">20.2 · Writing for models: the ten style rules</h3>
   <p>Instruction files are read by a very particular reader: enormously knowledgeable, totally literal, brand-new to your project every single session, and paying attention costs it something. Write for <em>that</em> reader and everything else follows:</p>
@@ -2546,6 +2654,20 @@ professional-looking.</code></pre>
     <tr><td><strong>Confidence split</strong></td><td>Every item routed by a scored gate: high-confidence path runs straight through; low-confidence lands in a human queue</td><td>High volume, tolerable-error middle, expensive edge cases — automate the 80%, escalate the 20% (9.6).</td></tr>
     <tr><td><strong>Notebook long-haul</strong></td><td>One durable PROGRESS.md; a chain of short fresh sessions, each reading it, advancing one milestone, updating it</td><td>The task is bigger than any context window: migrations, audits, month-long builds (12.2, 17.6).</td></tr>
   </table>
+  <details class="plens">
+    <summary>🔬 Platform lens: where each shape runs well — and where it fights the platform</summary>
+    <table>
+      <tr><th style="width:190px">Shape</th><th>Natural home</th><th>Fights the platform on</th></tr>
+      <tr><td><strong>Inbox</strong></td><td>Headless Claude + scheduler; in a pure Microsoft shop, Power Automate triggering per-item processing</td><td>Any chat surface — no folder means no idempotency marker, so reruns double-process</td></tr>
+      <tr><td><strong>Fan-out / fan-in</strong></td><td>Claude Code subagents or worktrees; Copilot's version is filing N issues and letting the coding agent take them in parallel</td><td>Studio and M365 agents — no parallel primitives, no merge step</td></tr>
+      <tr><td><strong>Draft–critique–revise</strong></td><td>Claude Code (producer + judge as two roles) or Claude chat for documents</td><td>One-shot surfaces like Excel Copilot — there's no loop to put the critique in</td></tr>
+      <tr><td><strong>Spec-then-implement</strong></td><td>Two Claude Code sessions; on GitHub, spec-in-the-issue → coding agent implements is this shape productized</td><td>Anything without durable files between sessions — the spec must outlive the context that wrote it</td></tr>
+      <tr><td><strong>Reconciliation</strong></td><td>Claude Code — the deterministic diff belongs in <code>scripts/</code></td><td>M365 chat: “compare these two reports” hands the diff to the most cross-document-hallucination-prone surface you own (15.3)</td></tr>
+      <tr><td><strong>Confidence split</strong></td><td>Headless Claude with a scoring gate — <em>or Copilot Studio</em>, whose built-in human-handoff makes the escalation lane first-class</td><td>Completions-style tools — there's no gate to route through</td></tr>
+      <tr><td><strong>Notebook long-haul</strong></td><td>Claude Code, full stop — nothing else combines durable working files with fresh sessions</td><td>Every chat surface: the “notebook” becomes the transcript, which is exactly the rot the shape exists to escape</td></tr>
+    </table>
+    <p style="margin:0">Notice how the platforms sort: <strong>the file-and-loop platforms host the middles of workflows; the hosted chat platforms make good entrances and exits</strong> — intake at one end, delivery and human escalation at the other. That's the dossier drawer's file-bus hybrid (19.3), seen from the workflow side.</p>
+  </details>
 
   <h3 id="wd-antipatterns">21.4 · The anti-pattern gallery: how workflows actually die</h3>
   <div class="grid2">
