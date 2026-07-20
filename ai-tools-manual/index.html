@@ -474,6 +474,7 @@
   <a class="sub" href="#er-cache">Prompt-cache math</a>
   <a class="sub" href="#er-search">Agentic search vs. RAG</a>
   <a class="sub" href="#er-subagent">Sub-agent isolation</a>
+  <a class="sub" href="#er-model">Inside the model</a>
   <a href="#part11">11 · The instrument panel</a>
   <a class="sub" href="#ip-tools">The built-in toolbelt</a>
   <a class="sub" href="#ip-controls">Cockpit controls</a>
@@ -561,7 +562,7 @@
     <span class="chip">📗 26 parts</span>
     <span class="chip">🧭 5 playbooks</span>
     <span class="chip">💰 12 money-saving rules</span>
-    <span class="chip">🔤 108 glossary terms</span>
+    <span class="chip">🔤 112 glossary terms</span>
   </div>
 </header>
 
@@ -610,7 +611,7 @@
 
   <div class="callout save">
     <div class="co-title">💰 Look for these boxes</div>
-    <p>Anything in a purple box like this one is a <strong>token-saving move</strong>. With a capped budget, these boxes are the highest-value content in the manual — they are the difference between running out of credits mid-month and finishing with room to spare.</p>
+    <p>Anything in a purple box like this one is a <strong>token-saving move</strong>. With a capped budget, these boxes are the fastest-payback habits in the manual — the difference between running out of credits mid-month and finishing with room to spare.</p>
   </div>
 </section>
 
@@ -819,6 +820,40 @@
     <li>For analysis: ask “how did you calculate this?” — if the method is wrong, the answer is wrong, no matter how confident it sounds.</li>
   </ol>
 
+  <h4>A real session, annotated</h4>
+  <p>Everything above, compressed into one worked session — a data question, start to finish. The annotations are the proficient-user tells: each is a habit from this manual firing at the exact moment it matters.</p>
+  <pre><code>YOU &gt; Read q2-sales.csv and describe its structure: columns,
+      rows, date range, quality problems. Don't analyze yet.
+                                     <span class="c">← orient first: cheap, and it prevents</span>
+CLAUDE  • Read(q2-sales.csv)           <span class="c">conclusions built on misread data</span>
+        "8 columns, 4,120 rows, Apr–Jun. 14 rows missing
+         region; two date formats mixed."
+                                     <span class="c">← that file is now in the transcript and</span>
+                                     <span class="c">rides along on every turn below (Part 10)</span>
+YOU &gt; We're deciding whether to keep the reseller channel.
+      Analyze revenue by channel over time — compute with a
+      script, no mental math. Three findings, with numbers.
+                                     <span class="c">← the decision is attached; code does</span>
+CLAUDE  • Write(analyze.py)            <span class="c">the volume, not the context window</span>
+        • Bash(python analyze.py)
+        "1) Reseller revenue −31% across the quarter…"
+        • Write(chart.py) …
+YOU &gt; <span class="b">[Esc]</span> Stop — no charts yet. First: is the decline
+      broad, or concentrated in a few accounts?
+                                     <span class="c">← wrong direction interrupted in seconds,</span>
+CLAUDE  • Bash(python top_accounts.py) <span class="c">not discovered five turns later</span>
+        "Concentrated: 3 accounts are 78% of the decline."
+YOU &gt; That changes the story. Write findings.md — exec
+      summary up top, numbers appended, method noted.
+CLAUDE  • Write(findings.md)  "Done. Want a sanity check?"
+YOU &gt; Yes — totals reconcile against the raw CSV, and all
+      4,120 rows accounted for.      <span class="c">← "done" is never accepted as done;</span>
+CLAUDE  • Bash(python check.py)        <span class="c">verification is asked for, every time</span>
+        "Totals match. 14 no-region rows flagged, not dropped."
+YOU &gt; /clear                         <span class="c">← task over: 4,120 rows stop paying rent,</span>
+                                     <span class="c">and the next task starts clean</span></code></pre>
+  <p>Six user turns, one interruption, one verification pass, one <code>/clear</code>. Nothing here is advanced — it's Parts 1–5 applied without exception, which is most of what “proficient” means.</p>
+
   <h3 id="cc-expert">Expert track <span class="badge expert">Power features</span></h3>
 
   <details>
@@ -951,7 +986,7 @@
 <!-- ─────────────── PART 5: TOKEN ECONOMY ─────────────── -->
 <section id="part5">
   <h2><span class="part-no">Part 5 · The money chapter</span>The token economy: making a capped budget last</h2>
-  <p>Your credit is capped, and you'll be using these tools heavily. The good news: token waste is not random — it comes from a handful of identifiable habits, and every one has a cheap alternative. Users who internalize this chapter routinely do <em>more</em> work for a third of the spend.</p>
+  <p>Your credit is capped, and you'll be using these tools heavily. The good news: token waste is not random — it comes from a handful of identifiable habits, and every one has a cheap alternative. Users who internalize this chapter routinely do <em>more</em> work for a third of the spend. And one reframe to carry through the chapter: even as per-token prices fall with each model generation, every rule here stays load-bearing — because each one is also a <em>quality</em> habit. A small, sharp context doesn't just cost less; it measurably makes the model smarter (Part 12.1). Conservation and quality are one discipline wearing two names.</p>
 
   <h3 id="te-what">What actually costs money</h3>
   <p>Every message to the model sends <strong>the entire conversation so far</strong> — your messages, the assistant's replies, every file it read, every command output — as <strong>input tokens</strong>, and the reply comes back as <strong>output tokens</strong>. Two facts dominate everything:</p>
@@ -1271,6 +1306,7 @@
 
   <h3 id="wl-family">8.2 · The family map (60-second version)</h3>
   <p>"Copilot" is a Microsoft brand spanning unrelated products with unrelated licenses. The cast, before we dissect them: <strong>GitHub Copilot</strong> (code, Part 4), <strong>Microsoft 365 Copilot</strong> (Office apps + chat, grounded in your work data), <strong>Copilot in Excel</strong> and <strong>in Power BI/Fabric</strong> (specialists inside those products), <strong>Copilot Studio</strong> (a low-code builder for governed org agents), and consumer Copilot (general chat, no work grounding). On the Anthropic side: <strong>Claude Code</strong> (Part 3), the <strong>Claude app</strong> (chat + Projects + Artifacts), and <strong>Claude Cowork</strong> (agentic folder work without a terminal). GitHub Copilot and M365 Copilot are separate purchases — check what your org actually licenses before designing any workflow around either.</p>
+  <p>And for honesty about the map's edges: this manual's two families are not the whole field. Google runs the same playbook (Gemini in Workspace ≈ M365 Copilot; Gemini CLI ≈ Claude Code), agent-first editors like Cursor and Windsurf blend Copilot's surface with Claude Code's autonomy, and open-weight models (Llama, Mistral, DeepSeek) let you self-host the engine entirely. The manual doesn't teach them — but it doesn't need to: every one of them is the same five components wired differently, and the six diagnostic questions in 8.1 will size any of them up in an afternoon. That's the test of whether you've learned architecture rather than vendors.</p>
 
   <h3 id="wl-m365">8.3 · M365 Copilot under the hood</h3>
   <p>Architecture: when you prompt M365 Copilot, it does <strong>not</strong> read your mailbox or your document top to bottom. It runs a <em>search</em> — over the <strong>semantic index</strong> Microsoft builds from your Graph data (emails, files, meetings, chats, chunked and embedded for meaning-based lookup) — takes the top-scoring fragments, packs them into the context alongside your prompt, and generates <strong>once</strong>. That one sentence predicts everything that follows.</p>
@@ -1621,6 +1657,28 @@ weekly-report/
     <li><strong>Force structure to make output checkable.</strong> To get reliable machine-readable output, you don't <em>ask nicely</em> — you constrain the shape. <strong>Structured outputs / tool-use</strong> bind the model to a JSON schema (defined fields, enums, types); <strong>prefill</strong> — starting the assistant's reply with an opening <code>{</code> — nudges it into format. Structure is what turns “probably parseable prose” into “a contract a validator can accept, retry, or quarantine” (9.3).</li>
   </ul>
   <blockquote><p><strong>The engine-room summary:</strong> a stateless function, fed a growing transcript that's mostly tool results, looped by the client, discounted by a prefix cache, pointed at your files by search rather than a stale index, sampled rather than computed. Every technique in this manual is a way of shaping one of those realities. Know the engine and the habits stop being rules to memorize — they become the only things that could possibly work.</p></blockquote>
+
+  <h3 id="er-model">10.8 · One floor further down: inside the model itself</h3>
+  <p>Everything above treats the model as a sealed unit — a stateless function that reads a transcript and continues it. That's the right abstraction for daily work. But four facts about what's <em>inside</em> the unit explain the behaviors no harness setting can fix, and they complete the first-principles picture:</p>
+  <div class="grid2">
+    <div class="card">
+      <h4>It predicts the next token — that's the whole machine</h4>
+      <p style="margin:0">Training is one task at colossal scale: given text, predict what comes next. Everything else — answering, coding, “knowing” — is that single operation. The consequence that matters most: <strong>recall and invention are the same act.</strong> There is no fact database being consulted; asked for a citation, the model produces the most <em>plausible-looking</em> citation, because plausibility is all it ever optimized. Hallucination isn't a defect awaiting a patch — it's the mechanism running as designed, without an anchor. Which is exactly why grounding works: put the real facts in the context and prediction snaps to them.</p>
+    </div>
+    <div class="card">
+      <h4>Three training stages explain its personality</h4>
+      <p style="margin:0"><strong>Pretraining</strong> (predict the internet) builds the knowledge — frozen at the knowledge cutoff. <strong>Instruction tuning</strong> teaches it to follow a request rather than merely continue it. <strong>Preference training (RLHF)</strong> has humans rank candidate answers and optimizes toward the preferred — and human raters reliably prefer confident, agreeable, complete-sounding answers. That is the mechanical root of sycophancy (“You're absolutely right!”) and of confident wrongness. The practical yield: <strong>a model agreeing with you is not evidence</strong> — it was trained to agree. Ask for the case against, instead.</p>
+    </div>
+    <div class="card">
+      <h4>Tokenization explains the weird failures</h4>
+      <p style="margin:0">The model never sees letters or digits — text is chopped into subword <em>tokens</em> (“straw” + “berry”; numbers in odd groupings) before it sees anything. That's why letter-counting, precise string edits, and mental arithmetic fail in ways that look absurd next to its reasoning ability: it's being quizzed on units it cannot perceive. The fix is one you already know as rule 9: route those tasks to code, which sees characters and digits natively.</p>
+    </div>
+    <div class="card">
+      <h4>Attention explains the window — and the rot</h4>
+      <p style="margin:0">Inside every step, each token in the context <em>attends to</em> every other token — which is why compute climbs steeply with context length, why windows have hard limits at all, and why attention spreads thinner as the window fills. Context rot (12.1) isn't an implementation bug someone will fix; it's the shape of the mechanism. “Smallest sufficient context” isn't thrift — it's working <em>with</em> the architecture.</p>
+    </div>
+  </div>
+  <p>None of this changes what you do — it explains why what you do works, one floor below where 10.1 started. A predictor with no fact store (so: ground and verify). Tuned to please (so: never read agreement as evidence). Blind to characters (so: compute with code). Attending quadratically (so: curate the window). The manual's habits aren't conventions; they're the only strategies this machinery leaves open.</p>
 </section>
 
 <!-- ─────────────── PART 11: THE INSTRUMENT PANEL ─────────────── -->
@@ -1659,7 +1717,7 @@ weekly-report/
   </table>
 
   <h3 id="ip-singlefile">11.3 · The building surface, part 1 — the single-file doctrine</h3>
-  <p>Notice that this manual, and nearly every “build me a tool” example in it, produces <strong>one self-contained HTML file</strong> — CSS and JavaScript inlined, no build step, no external CDN, data read from a sibling file. That's not naïveté; it's a deliberate architecture experts choose for non-developer deliverables, and the reasons are worth spelling out because they generalize:</p>
+  <p>Notice that this manual, and nearly every “build me a tool” example in it, produces <strong>one self-contained HTML file</strong> — CSS and JavaScript inlined, no build step, no external CDN, data read from a sibling file. That's not naïveté; it's a deliberate architecture experts choose for non-developer deliverables:</p>
   <div class="grid2">
     <div class="card">
       <h4>Why one file wins</h4>
@@ -1705,7 +1763,7 @@ weekly-report/
     </div>
     <div class="card">
       <h4>Print &amp; dark-mode aware</h4>
-      <p>A print stylesheet (so it becomes a clean PDF or handout) and a dark theme cost the agent almost nothing to add and are the difference between “a demo” and “a thing people actually use daily.” This manual has both.</p>
+      <p>A print stylesheet (so it becomes a clean PDF or handout) and a dark theme cost the agent almost nothing to add and are the difference between “a demo” and “a thing people actually use daily.”</p>
     </div>
     <div class="card">
       <h4>A HOW-TO beside it</h4>
@@ -1758,11 +1816,11 @@ weekly-report/
   <p>When people imagine “multi-agent systems” they picture a chaotic swarm. Production reality is the opposite: a <em>small</em> set of well-defined compositions, added only when they earn their keep. The field has largely converged on these five — worth knowing by name because they're the vocabulary of every serious design conversation:</p>
   <table>
     <tr><th style="width:190px">Pattern</th><th>Shape</th><th>Use when</th></tr>
-    <tr><td><strong>Prompt chaining</strong></td><td>Step 1 → step 2 → step 3, each feeding the next (with a check between)</td><td>The task splits cleanly into fixed sequential stages. This is the backbone of every Part 9 pipeline.</td></tr>
-    <tr><td><strong>Routing</strong></td><td>A classifier sends each input down a specialized path</td><td>Inputs fall into distinct kinds that deserve different handling — the confidence-routing of 9.6.</td></tr>
-    <tr><td><strong>Parallelization</strong></td><td>Split the work (or ask N times and vote) and run concurrently</td><td>Independent subtasks, or you want multiple looks for reliability. The fleet (7.6), formalized.</td></tr>
-    <tr><td><strong>Orchestrator–workers</strong></td><td>A coordinator breaks a job down, dispatches workers, integrates results</td><td>The subtasks aren't known in advance and must be decided dynamically. The orchestrator pattern of 7.5.</td></tr>
-    <tr><td><strong>Evaluator–optimizer</strong></td><td>One agent produces; another critiques against a rubric; loop until it passes</td><td>Quality has a measurable bar and iteration helps — “draft → critique → revise” (Part 2) made into a loop; the LLM-as-judge of 9.4.</td></tr>
+    <tr><td><strong>Prompt chaining</strong></td><td>Step 1 → step 2 → step 3, each feeding the next (with a check between)</td><td>The task splits cleanly into fixed sequential stages. This is the backbone of every Part 9 pipeline. <em>E.g.: extract invoice fields → validate → categorize → draft the response.</em></td></tr>
+    <tr><td><strong>Routing</strong></td><td>A classifier sends each input down a specialized path</td><td>Inputs fall into distinct kinds that deserve different handling — the confidence-routing of 9.6. <em>E.g.: support tickets — billing → refund flow; bug → repro template; anything else → human queue.</em></td></tr>
+    <tr><td><strong>Parallelization</strong></td><td>Split the work (or ask N times and vote) and run concurrently</td><td>Independent subtasks, or you want multiple looks for reliability. The fleet (7.6), formalized. <em>E.g.: three subagents review one module each; or five headline drafts, and a judge picks.</em></td></tr>
+    <tr><td><strong>Orchestrator–workers</strong></td><td>A coordinator breaks a job down, dispatches workers, integrates results</td><td>The subtasks aren't known in advance and must be decided dynamically. The orchestrator pattern of 7.5. <em>E.g.: “migrate this codebase” — the coordinator surveys, dispatches per-file workers, merges.</em></td></tr>
+    <tr><td><strong>Evaluator–optimizer</strong></td><td>One agent produces; another critiques against a rubric; loop until it passes</td><td>Quality has a measurable bar and iteration helps — “draft → critique → revise” (Part 2) made into a loop; the LLM-as-judge of 9.4. <em>E.g.: memo drafted → judge scores it against the rubric → revise until it passes or three rounds elapse.</em></td></tr>
   </table>
   <blockquote><p><strong>The governing wisdom:</strong> don't build a swarm — compose a couple of these, and add an agent only when parallelism or isolation genuinely earns the cold-start cost (10.6). The most reliable “agentic” system is usually the <em>least</em> agentic one that does the job: prefer a deterministic script; reach for a pattern above only where judgment is truly required. Complexity is a cost you pay in reliability (the equation of 9.1).</p></blockquote>
 
@@ -1786,6 +1844,9 @@ weekly-report/
     <li><strong>Remove untrusted content (leg 2):</strong> when a task processes web pages or inbound mail, run it with <em>no</em> access to your private data and secrets — an isolated, low-privilege context. Treat anything the agent fetched from outside as potentially hostile.</li>
     <li><strong>Isolate (weaken leg 1):</strong> do risky, untrusted-content work in a throwaway environment (a container, a worktree copy) where “worst case” is discarding the copy — the same reversibility-and-isolation principle as 7.8's autonomy dial.</li>
   </ul>
+
+  <h4>The other attack surface: what you install</h4>
+  <p>Injection arrives in <em>content</em>; the second attack arrives in <em>capability</em>. An MCP server is third-party code running with your credentials and whatever access you granted it. A plugin ships commands, hooks, and scripts that execute on your machine. A skill can bundle scripts the agent runs without ever reading them into context. Installing any of these is an act of trust in their author — a malicious or compromised one is the whole trifecta delivered in a single package, and a poisoned tool <em>description</em> can even smuggle injected instructions into every session that loads it. So treat agent capability exactly like software dependencies, because that's what it is: prefer first-party and actively maintained servers; read what a plugin actually contains before installing (it's just files — read them, or have a fresh session audit them); pin versions rather than tracking latest; and scope third-party servers with least-privilege permissions. The rule: <strong>audit what you install, or what you install audits you.</strong></p>
   <div class="callout warn">
     <div class="co-title">⚠️ The one to internalize</div>
     <p>Be most careful exactly when an agent with real tools and access to your data is <strong>reading something you didn't write</strong> — a browsed page, a forwarded email, a third-party file. That's the moment all three legs can align. The defense isn't a clever prompt (injection defeats prompts); it's <em>architecture</em>: don't grant the trifecta in the first place.</p>
@@ -1912,7 +1973,7 @@ weekly-report/
     <tr><td><strong>Resources</strong></td><td>Readable data (a file, a table, a log stream) addressed by URI</td><td><strong>The application decides</strong> — context offered, not actions taken.</td></tr>
     <tr><td><strong>Prompts</strong></td><td>Named, parameterized prompt templates the server ships</td><td><strong>The user decides</strong> — they surface as slash commands.</td></tr>
   </table>
-  <p>Transport tells you the trust story: <strong>stdio</strong> servers run as local child processes (your machine, your credentials, no network hop); <strong>streamable HTTP</strong> servers are remote services with OAuth. Configuration lives in <code>.mcp.json</code> with the same three-scope logic as everything else (user-wide, project-shared and checked in, or local). And the part experts obsess over that beginners never see: <strong>every connected server's tool schemas are injected into the context of every session</strong> — names, descriptions, parameter schemas. Five chatty servers can quietly occupy tens of thousands of tokens before you type a word. That's <strong>token pollution</strong> in its purest form, and it's why the discipline is to curate connectors per project rather than installing globally, and why the newest harnesses defer tool schemas — loading a name-only stub and fetching the full schema on demand, progressive disclosure applied to the tool catalog itself.</p>
+  <p>Transport tells you the trust story: <strong>stdio</strong> servers run as local child processes (your machine, your credentials, no network hop); <strong>streamable HTTP</strong> servers are remote services with OAuth. Configuration lives in <code>.mcp.json</code> with the same three-scope logic as everything else (user-wide, project-shared and checked in, or local). And the part experts obsess over that beginners never see: <strong>every connected server's tool schemas are injected into the context of every session</strong> — names, descriptions, parameter schemas. Five chatty servers can quietly occupy tens of thousands of tokens before you type a word. That's <strong>token pollution</strong> in its purest form, and it's why the discipline is to curate connectors per project rather than installing globally — and to <em>vet</em> before connecting, since a server is third-party code operating with your credentials (12.5's supply-chain rule) — and why the newest harnesses defer tool schemas — loading a name-only stub and fetching the full schema on demand, progressive disclosure applied to the tool catalog itself.</p>
   <div class="callout save">
     <div class="co-title">💰 The contrarian rule: the best MCP server is often a CLI</div>
     <p>MCP earns its cost when you need <em>interactive, stateful, or permissioned</em> access (a browser session, a live database with OAuth). But if the job is scriptable — fetch, transform, file — a small CLI script the agent runs via Bash beats an MCP server: zero standing schema tax, testable without an agent, versioned in git, and usable by humans too. Ask “does the <em>model</em> need to operate this mid-reasoning, or does it just need the result?” The result usually wins — that's 13.5's shell plane again.</p>
@@ -1990,6 +2051,33 @@ weekly-report/
   </table>
   <p>The selection rule experts apply without thinking: <strong>match the verticality of the retrieval to the verticality of the question.</strong> “What did I miss across all my meetings this week?” is horizontal — only a global index can answer it, and no amount of agentic digging substitutes. “Why does the invoice job double-post on retries?” is vertical — it needs deep, current, whole-file reading, and a horizontal index will return confident fragments that miss the bug. Most enterprise disappointment with AI is a verticality mismatch: a horizontal tool asked a vertical question, or vice versa.</p>
   <p>And the best current systems are <strong>hybrid pipelines</strong>: <em>deterministic filtering first</em> (ACLs, date ranges, path and metadata predicates — cheap, exact, and where security lives, because access control enforced by relevance scoring is not access control), <em>semantic ranking second</em> (find candidates by meaning), <em>agentic reading third</em> (open the top hits whole and reason over live content). Filter → rank → read: each stage cuts the space so the next, more expensive stage can afford to be thorough.</p>
+  <pre><code><span class="c">One question through the pipeline:
+"What did we promise Contoso about data residency?"</span>
+
+  1 FILTER <span class="c">(deterministic)</span>  docs the asker may read  ∧  client = Contoso
+                           ∧  type ∈ {contract, MSA, email}  ∧  date ≥ 2024
+                           <span class="g">→ 40,000 documents become 312</span>
+  2 RANK   <span class="c">(semantic)</span>       embed the question; nearest chunks about
+                           residency / hosting / geography
+                           <span class="g">→ 312 documents become 9 candidate passages</span>
+  3 READ   <span class="c">(agentic)</span>        open the top 3 documents WHOLE; locate the
+                           actual clause; quote it with file + section
+                           <span class="g">→ the answer, cited and checkable</span>
+
+<span class="b">  skip stage 1 → rank the whole tenant: slow, and security by relevance score
+  skip stage 3 → answer from fragments: a plausible gist of the wrong clause</span></code></pre>
+  <details>
+    <summary>If you genuinely must build a RAG system: the practitioner's outline</summary>
+    <p>Sometimes the honest verdict is that nothing off the shelf fits: the corpus is huge, answers must come back in seconds, and agentic reading per query is too slow or too costly. Then you're building retrieval, and five decisions dominate the outcome:</p>
+    <ol>
+      <li><strong>Chunk by structure, not by size.</strong> Split on the document's own boundaries (sections, clauses, paragraphs) and keep the breadcrumbs — title, heading path, date — attached to every chunk. A good chunk is what a human would quote; an arbitrary 500-token slice is what a bad system retrieves.</li>
+      <li><strong>Go hybrid from day one.</strong> Dense embeddings find meaning; keyword search (BM25) finds what embeddings fumble — exact names, IDs, error codes, part numbers. Pure vector search failing on “INV-2214” is the most common first disappointment.</li>
+      <li><strong>Retrieve wide, then rerank.</strong> Cheap retrieval fetches the top 50; a reranker (a small cross-encoder, or an LLM pass) reorders them and keeps the top handful. Two stages — cheap recall, then expensive precision — beat any single stage at both jobs.</li>
+      <li><strong>Filter deterministically first.</strong> ACLs, dates, versions, and document types before any ranking — the same law as above: access control enforced by relevance scoring is not access control.</li>
+      <li><strong>Eval retrieval separately from answers.</strong> Thirty real questions, each paired with the passage that should surface. Measure “did the right passage reach the context” on its own — a retrieval miss <em>presents</em> as a model failure, and until you can tell them apart you will tune the wrong stage forever.</li>
+    </ol>
+    <p>And the default that saves most teams the whole project: metadata filters plus agentic reading — the pipeline above, minus the embedding index — covers far more corpora than the RAG industry suggests. Build the index when the numbers force you to, not when the architecture diagram looks impressive.</p>
+  </details>
 
   <h3 id="rg-memory">15.2 · Memory architecture: what persists where</h3>
   <p>Retrieval is one half of the librarian problem; memory is the other. The platforms now have a genuine hierarchy, and knowing what survives what is the practical skill:</p>
@@ -2478,7 +2566,7 @@ POINTERS: method → .claude/skills/monthly-report/
   </table>
 
   <h3 id="iq-instincts">19.5 · The ten instincts</h3>
-  <p>Everything this manual argues, compiled to the reflex level — the things experts do without deciding to. Read them the day you finish Part 1, and again the month you realize they've become yours:</p>
+  <p>Everything this manual argues, compiled to the reflex level — the things experts do without deciding to. Read them the day you finish Part 1, and again the month you realize they've become yours. (Other chapters end in checklists of their own domain — the codex audit of 16.5, the workflow pre-flight of 21.4; those serve their chapters. This list serves the whole book: if the manual kept a single page, it would be this one.)</p>
   <div class="card">
     <ol style="margin:0">
       <li><strong>Before delegating, name the verifier.</strong> “How will it know it's right?” decides works-vs-fails before the first token (19.1).</li>
@@ -2748,7 +2836,7 @@ professional-looking.</code></pre>
   </ul>
 
   <h3 id="hz-close">22.4 · The last page</h3>
-  <blockquote><p>Every direction on this horizon — building products, new surfaces, organization scale — runs on the same dozen durables you now own: context is a curated, decaying budget; the verifier is the work; determinism where possible, judgment where necessary; structure over prose for anything that must always hold; least privilege, gated outbound; evals over vibes. The tools in this manual's title will be renamed, re-versioned, and eventually replaced. What you've built by reading it — the ability to look at any new agentic system and already know its anatomy, its failure modes, and its price — is the part that doesn't expire. <strong>The horizon isn't something to wait for. It's the same machinery, further out — and you now know how the machinery works.</strong></p></blockquote>
+  <blockquote><p>Every direction on this horizon — building products, new surfaces, organization scale — runs on the ten instincts of 19.5 and the same few durables you now own: context is a curated, decaying budget; the verifier is the work; determinism where possible, judgment where necessary; structure over prose for anything that must always hold; least privilege, gated outbound; evals over vibes. The tools in this manual's title will be renamed, re-versioned, and eventually replaced. What you've built by reading it — the ability to look at any new agentic system and already know its anatomy, its failure modes, and its price — is the part that doesn't expire. <strong>The horizon isn't something to wait for. It's the same machinery, further out — and you now know how the machinery works.</strong></p></blockquote>
 </section>
 
 <!-- ─────────────── PART 23: GLOSSARY EVERYDAY ─────────────── -->
@@ -2834,11 +2922,14 @@ professional-looking.</code></pre>
   <div class="term"><div class="t-name">Golden set</div><div class="t-def">A curated collection of real past inputs with known-correct outputs, used as an automated exam (eval) for a workflow. Every prompt/model change runs against it; every production failure joins it. The instrument that turns “feels better” into “scores 94% vs 89%.”</div></div>
   <div class="term"><div class="t-name">Control plane</div><div class="t-def">Whatever decides <em>when</em> workflow steps run — you manually, a Claude session, an OS scheduler, Power Automate triggers, or CI. Chosen separately from the workers; the expert default for recurring pipelines is the dumbest reliable option (a scheduler).</div></div>
   <div class="term"><div class="t-name">Stateless</div><div class="t-def">The defining property of the model: it keeps no memory between calls. The whole “conversation” is a transcript the <em>client</em> stores and re-sends every turn to a fresh, memoryless model. Explains compounding cost, why <code>/clear</code> works, and why it “forgets.” See Part 10.1.</div><div class="t-say">“There's no stuck state — it's stateless. Just clear and restate.”</div></div>
+  <div class="term"><div class="t-name">Next-token prediction</div><div class="t-def">The single operation underneath everything a model does: given the text so far, predict what comes next. Recall and invention are the same act — there is no fact database being consulted — which is why hallucination is structural rather than a bug, and why grounding (putting real facts in the context) works. Part 10.8.</div></div>
+  <div class="term"><div class="t-name">RLHF / preference training</div><div class="t-def">The final training stage: humans rank candidate answers and the model is optimized toward the preferred ones. Raters reliably prefer confident, agreeable, complete-sounding answers — the mechanical root of sycophancy and confident wrongness. Corollary: a model agreeing with you is not evidence. Part 10.8.</div></div>
   <div class="term"><div class="t-name">Agent loop (ReAct)</div><div class="t-def">The cycle behind agentic tools: the model emits final text <em>or</em> a tool call → the client runs the tool and appends the result → the whole transcript goes back → repeat. Parallel tool calls happen in one step; interrupting halts the loop cleanly between steps. Part 10.3.</div></div>
   <div class="term"><div class="t-name">Agentic search</div><div class="t-def">Finding information by <em>navigating files at query time</em> — grep, glob, read, follow references — the way a person would, instead of pre-building an embedding index (RAG). Reads whole, current files with no index to go stale; the design that defines Claude Code. Part 10.5.</div><div class="t-say">“No need to index the folder — it does agentic search.”</div></div>
   <div class="term"><div class="t-name">Context rot / long-horizon</div><div class="t-def">The finding that a model gets subtly <em>worse</em> as its context fills — attention spreads thin and middle details get missed, well before the window is full. Motivates “smallest sufficient context,” compaction, sub-agents, and external-memory files for tasks longer than one window. Part 12.1–12.2.</div></div>
   <div class="term"><div class="t-name">Checkpoint / rewind</div><div class="t-def">Jumping the session back to an earlier turn — and, in modern versions, restoring the <em>file state</em> too. A session-level undo (<kbd>Esc</kbd> <kbd>Esc</kbd>) that complements git: git is durable milestones, rewind is instant “that turn went wrong.” Part 11.2.</div></div>
   <div class="term"><div class="t-name">Lethal trifecta</div><div class="t-def">The security framing for agents: real danger requires all three of (1) access to private data, (2) exposure to untrusted content, (3) an exfiltration channel. Remove any one and the prompt-injection attack collapses. Defense is architecture, not clever prompting. Part 12.5.</div><div class="t-say">“It's reading an outside email and can send mail — that's two legs of the trifecta. Cut one.”</div></div>
+  <div class="term"><div class="t-name">Supply-chain risk (agent tooling)</div><div class="t-def">The risk carried by installed capability rather than processed content: an MCP server is third-party code running with your credentials; plugins ship hooks and scripts; skills can bundle executables. Vet, pin, and least-privilege everything you install — a compromised tool is the whole trifecta in one package. Part 12.5.</div><div class="t-say">“Before we add that community MCP server, who's read its code?”</div></div>
   <div class="term"><div class="t-name">Agent patterns</div><div class="t-def">The small set of compositions that actually work in production: prompt chaining, routing, parallelization, orchestrator–workers, evaluator–optimizer. Compose a couple; add an agent only when parallelism or isolation earns the cost. The vocabulary of every serious design discussion. Part 12.4.</div></div>
   <div class="term"><div class="t-name">Single-file / self-contained app</div><div class="t-def">A deliverable built as one HTML file — CSS/JS inlined, no build step, no external CDN, data read from a sibling file. Opens anywhere, offline, forever; email-able and diff-able. The expert default for non-developer tools until a specific limit forces a real project. Part 11.3.</div></div>
   <div class="term"><div class="t-name">Sandbox / CSP</div><div class="t-def">The isolated iframe (governed by a Content-Security-Policy) where chat-built artifacts run: no arbitrary network, no server persistence, no secrets, bundled libraries only. Knowing the walls in advance tells you what will run before you build it. Part 11.4.</div></div>
@@ -2868,6 +2959,7 @@ professional-looking.</code></pre>
   <div class="term"><div class="t-name">Disposable sandbox</div><div class="t-def">A container, VM, or worktree copy where an agent runs with high autonomy because the blast radius is the sandbox itself — no real credentials, restricted network, worst case is deleting the copy. “Autonomy is granted by the environment, not to the agent.” Part 18.4.</div></div>
   <div class="term"><div class="t-name">Agent observability</div><div class="t-def">Running agents like services: transcripts archived as flight-recorder logs, cost tracked per accepted deliverable, telemetry (e.g. OpenTelemetry) for fleet dashboards, weekly context audits, and every failure fed into the eval set. Part 18.5.</div></div>
   <div class="term"><div class="t-name">Ask-fatigue</div><div class="t-def">The failure mode of approval-heavy setups: after fifty routine permission prompts, humans click yes reflexively — so the fifty-first, dangerous one sails through. Cure: allowlist the routine so attention is spent only where it matters (17.2), and let structure (denies, sandboxes) guard the rest.</div></div>
+  <div class="term"><div class="t-name">Data controls (training, retention, residency)</div><div class="t-def">The governance profile of an AI service: whether customer content trains models (tier-dependent — commercial tiers typically exclude it), how long inputs are retained (zero-data-retention options exist), where processing happens, and what indemnities cover generated output. The questions every rollout gets asked; verify against current terms per tier. Part 25.</div></div>
   <div class="term"><div class="t-name">Outcome contract</div><div class="t-def">The one-paragraph definition of workflow success written <em>before</em> any design: what file exists when it works, its format, quality bar, deadline, audience. The test: would two people agree whether a given run succeeded? Step 1 of every workflow, and the “done means” line of every brief. Parts 17.6, 21.1.</div></div>
   <div class="term"><div class="t-name">Inbox pattern</div><div class="t-def">The workhorse workflow shape: items land in <code>in/</code>, get processed, and are <em>moved</em> to <code>done/</code> — the move doubling as the idempotency marker, so a crashed run resumes safely and nothing is processed twice. Part 21.3.</div></div>
   <div class="term"><div class="t-name">Config harvesting</div><div class="t-def">Writing configuration only when a real session proves the need — the corrected assumption becomes a CLAUDE.md line, the third-time request becomes a command, the never-again incident becomes a hook, same day. The opposite of speculative day-one authoring, which encodes guesses. Part 20.4.</div><div class="t-say">“Don't write ten skills up front — harvest them as the repetitions show up.”</div></div>
@@ -2924,6 +3016,16 @@ professional-looking.</code></pre>
       <li><strong>Be suspicious when agents process untrusted content</strong> (webpages, inbound email, third-party files) with powerful tools enabled — that's the prompt-injection scenario. Least privilege: give the task only the access it needs.</li>
     </ol>
   </div>
+
+  <h3>The rollout questions: data governance &amp; IP</h3>
+  <p>The four rules above keep <em>you</em> safe day to day. The moment adoption goes team-wide, legal and security will ask a different set of questions — and a practitioner should walk into that meeting with the answers, not discover the questions there. (These are drift-category facts — Part 12.7 — so verify each against the provider's <em>current</em> terms for <em>your exact tier</em>; never rely on memory, or on this page.)</p>
+  <table>
+    <tr><th style="width:280px">The question you'll be asked</th><th>What the answer turns on</th></tr>
+    <tr><td><strong>“Is our data used to train their models?”</strong></td><td>Tier, not vendor. Consumer plans and enterprise/business plans differ sharply — commercial tiers typically exclude customer content from training by default; consumer tiers vary and change. Get the answer for the exact plan you're buying, in writing, and re-check at renewal.</td></tr>
+    <tr><td><strong>“Where does it go, and how long is it kept?”</strong></td><td>Retention windows (and the zero-data-retention options some API tiers offer), processing regions and residency commitments — and, easy to forget, every connector: an MCP server or Graph connector means your data also flows to <em>that</em> service, under <em>its</em> terms.</td></tr>
+    <tr><td><strong>“Can we ship AI-generated code? Who owns it?”</strong></td><td>Provider terms generally assign output to you, but code provenance is its own issue: Copilot offers a filter that suppresses suggestions matching public code, and enterprise plans carry indemnification programs — know whether yours are switched on. The durable stance regardless of terms: a human is the editor of record for anything shipped or signed (Part 1's golden rule, promoted to policy).</td></tr>
+    <tr><td><strong>“What's the audit trail?”</strong></td><td>Transcripts as logs (18.5), managed settings as enforcement (13.1), and the admin-side usage and audit surfaces of enterprise plans. For automated workflows, the trail is the operations kit (9.7) — not bureaucracy, but the thing that makes the workflow defensible after the fact.</td></tr>
+  </table>
 
   <h3>The escalation ladder</h3>
   <p>When stuck, escalate in this order — each step is cheaper than the one after it:</p>
